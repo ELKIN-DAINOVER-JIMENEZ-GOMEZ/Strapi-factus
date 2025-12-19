@@ -1,0 +1,145 @@
+{
+  "kind": "collectionType",
+  "collectionName": "invoice_items",
+  "info": {
+    "singularName": "invoice-item",
+    "pluralName": "invoice-items",
+    "displayName": "Invoice Item",
+    "description": "Items/líneas de factura"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "codigo_producto": {
+      "type": "string",
+      "required": true,
+      "maxLength": 50
+    },
+    "nombre_producto": {
+      "type": "string",
+      "required": true,
+      "maxLength": 255
+    },
+    "descripcion": {
+      "type": "text"
+    },
+    "cantidad": {
+      "type": "decimal",
+      "required": true,
+      "min": 0.01
+    },
+    "precio_unitario": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "descuento_porcentaje": {
+      "type": "decimal",
+      "min": 0,
+      "max": 100,
+      "default": 0
+    },
+    "descuento_valor": {
+      "type": "decimal",
+      "default": 0
+    },
+    "subtotal": {
+      "type": "decimal",
+      "required": true
+    },
+    "iva_porcentaje": {
+      "type": "decimal",
+      "min": 0,
+      "max": 100,
+      "default": 19
+    },
+    "iva_valor": {
+      "type": "decimal",
+      "default": 0
+    },
+    "ico_porcentaje": {
+      "type": "decimal",
+      "min": 0,
+      "max": 100,
+      "default": 0
+    },
+    "ico_valor": {
+      "type": "decimal",
+      "default": 0
+    },
+    "total_item": {
+      "type": "decimal",
+      "required": true
+    },
+    "orden": {
+      "type": "integer",
+      "default": 1
+    },
+    "unidad_medida": {
+      "type": "enumeration",
+      "required": true,
+      "default": "UND",
+      "enum": [
+        "UND",
+        "KG",
+        "LB",
+        "MT",
+        "M2",
+        "M3",
+        "LT",
+        "GL",
+        "HR",
+        "DIA"
+      ]
+    },
+    "unidad_medida_id": {
+      "type": "integer",
+      "default": 70
+    },
+    "codigo_estandar": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "codigo_estandar_id": {
+      "type": "integer",
+      "default": 1
+    },
+    "esquema_id": {
+      "type": "string",
+      "default": "1"
+    },
+    "es_excluido": {
+      "type": "boolean",
+      "default": false
+    },
+    "tributo_id": {
+      "type": "integer",
+      "default": 1
+    },
+    "retenciones": {
+      "type": "json",
+      "default": []
+    },
+    "propiedades_adicionales": {
+      "type": "json",
+      "default": []
+    },
+    "notas": {
+      "type": "text"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product",
+      "inversedBy": "invoice_items"
+    },
+    "invoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invoice.invoice",
+      "inversedBy": "invoice_items"
+    }
+  }
+}

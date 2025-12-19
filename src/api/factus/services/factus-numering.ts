@@ -1,0 +1,404 @@
+/**
+ * Servicio de Gestión de Rangos de Numeración
+ * Ubicación: src/api/factus/services/factus-numbering.ts
+ * 
+ * Responsabilidades:
+ * - Gestionar rangos de numeración DIAN
+ * - Asignar consecutivos automáticamente
+ * - Validar disponibilidad de números
+ * - Sincronizar con Factus API
+ */
+
+import type { NumberingRange } from '../types/factus.types';
+
+export default {
+  /**
+   * 🔢 Obtener rango activo por tipo de documento
+   * 
+   * @param tipoDocumento - Tipo de documento (factura, nota_credito, etc.)
+   * @returns Rango activo
+   */
+  async getActiveRange(
+    tipoDocumento: 'factura' | 'nota_credito' | 'nota_debito' | 'factura_exportacion' = 'factura'
+  ): Promise<NumberingRange> {
+    try {
+      strapi.log.info(`🔢 Buscando rango activo para ${tipoDocumento}...`);
+
+      const ranges = await strapi.entityService.findMany(
+        'api::numering-range.numering-range',
+        {
+          filters: {
+            tipo_documento: tipoDocumento,
+            activo: true,
+          },
+          sort: { id: 'desc' }, // Más reciente primero
+          limit: 1,
+        }
+      ) as  NumberingRange[];
+
+      if (!ranges || ranges.length === 0) {
+        throw new Error(
+          `❌ No hay rangos de numeración activos para ${tipoDocumento}. ` +
+          'Ve a Content Manager → Numbering Range y crea uno.'
+        );
+      }
+
+      const range = Array.isArray(ranges) ? ranges[0] : ranges;
+
+      // Validar que aún hay números disponibles
+      if (range.consecutivo_actual >= range.hasta) {
+        throw new Error(
+          `❌ Rango de numeración agotado. ` +
+          `${range.prefijo}: ${range.desde} - ${range.hasta}. ` +
+          `Actual: ${range.consecutivo_actual}. Crea un nuevo rango.`
+        );
+      }
+
+      strapi.log.info(`✅ Rango activo: ${range.nombre} (${range.prefijo})`);
+
+      return range;
+    } catch (error) {
+      strapi.log.error('❌ Error obteniendo rango activo:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 🎯 Obtener siguiente consecutivo disponible
+   * 
+   * @param rangeId - ID del rango en Strapi
+   * @returns Número consecutivo
+   */
+  async getNextConsecutive(rangeId: number): Promise<number> {
+    try {
+      strapi.log.info(`🎯 Obteniendo siguiente consecutivo para rango ${rangeId}...`);
+
+      const range = await strapi.entityService.findOne(
+        'api::numering-range.numering-range',
+        rangeId
+      ) as NumberingRange;
+
+      if (!range) {
+        throw new Error(`Rango ${rangeId} no encontrado`);
+      }
+
+      const nextConsecutive = range.consecutivo_actual;
+
+      // Validar que no exceda el límite
+      if (nextConsecutive > range.hasta) {
+        throw new Error(
+          `❌ Consecutivo ${nextConsecutive} excede el límite del rango (${range.hasta})`
+        );
+      }
+
+      strapi.log.info(`✅ Siguiente consecutivo: ${nextConsecutive}`);
+
+      return nextConsecutive;
+    } catch (error) {
+      strapi.log.error('❌ Error obteniendo consecutivo:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * ⬆️ Incrementar consecutivo (después de emitir factura)
+   * 
+   * @param rangeId - ID del rango en Strapi
+   * @returns Nuevo consecutivo
+   */
+  async incrementConsecutive(rangeId: number): Promise<number> {
+    try {
+      strapi.log.info(`⬆️ Incrementando consecutivo del rango ${rangeId}...`);
+
+      const range = await strapi.entityService.findOne(
+        'api::numering-range.numering-range',
+        rangeId
+      ) as NumberingRange;
+
+      if (!range) {
+        throw new Error(`Rango ${rangeId} no encontrado`);
+      }
+
+      const newConsecutive = range.consecutivo_actual + 1;
+
+      // Verificar que no exceda el límite
+      if (newConsecutive > range.hasta) {
+        strapi.log.warn(`⚠️ ¡ALERTA! Rango ${range.nombre} está llegando al límite`);
+      }
+
+      // Actualizar en base de datos
+      await strapi.entityService.update(
+        'api::numering-range.numering-range',
+        rangeId,
+        {
+          data: {
+            consecutivo_actual: newConsecutive,
+          },
+        }
+      );
+
+      strapi.log.info(`✅ Consecutivo incrementado a: ${newConsecutive}`);
+
+      return newConsecutive;
+    } catch (error) {
+      strapi.log.error('❌ Error incrementando consecutivo:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 📋 Listar todos los rangos
+   * 
+   * @param filters - Filtros opcionales
+   * @returns Lista de rangos
+   */
+  async listRanges(filters?: {
+    tipo_documento?: string;
+    activo?: boolean;
+  }): Promise<NumberingRange[]> {
+    try {
+      const queryFilters: any = {};
+
+      if (filters?.tipo_documento) {
+        queryFilters.tipo_documento = filters.tipo_documento;
+      }
+
+      if (filters?.activo !== undefined) {
+        queryFilters.activo = filters.activo;
+      }
+
+      const ranges = await strapi.entityService.findMany(
+        'api::numering-range.numering-range',
+        {
+          filters: queryFilters,
+          sort: { id: 'desc' },
+        }
+      ) as NumberingRange[];
+
+      return Array.isArray(ranges) ? ranges : [ranges];
+    } catch (error) {
+      strapi.log.error('❌ Error listando rangos:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 📊 Obtener estadísticas de un rango
+   * 
+   * @param rangeId - ID del rango
+   * @returns Estadísticas
+   */
+  async getRangeStats(rangeId: number): Promise<{
+    range: NumberingRange;
+    disponibles: number;
+    utilizados: number;
+    porcentaje_uso: string;
+    estado: 'OK' | 'ADVERTENCIA' | 'CRÍTICO';
+  }> {
+    try {
+      const range = await strapi.entityService.findOne(
+        'api::numering-range.numering-range',
+        rangeId
+      ) as NumberingRange;
+
+      if (!range) {
+        throw new Error(`Rango ${rangeId} no encontrado`);
+      }
+
+      const total = range.hasta - range.desde + 1;
+      const utilizados = range.consecutivo_actual - range.desde;
+      const disponibles = range.hasta - range.consecutivo_actual + 1;
+      const porcentajeUso = ((utilizados / total) * 100).toFixed(2);
+
+      // Determinar estado
+      let estado: 'OK' | 'ADVERTENCIA' | 'CRÍTICO' = 'OK';
+      if (disponibles < 100) {
+        estado = 'CRÍTICO';
+      } else if (disponibles < 500) {
+        estado = 'ADVERTENCIA';
+      }
+
+      return {
+        range,
+        disponibles,
+        utilizados,
+        porcentaje_uso: `${porcentajeUso}%`,
+        estado,
+      };
+    } catch (error) {
+      strapi.log.error('❌ Error obteniendo estadísticas:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * ✅ Validar número de factura
+   * 
+   * @param prefijo - Prefijo del número
+   * @param consecutivo - Consecutivo
+   * @returns Si es válido
+   */
+  async validateInvoiceNumber(
+    prefijo: string,
+    consecutivo: number
+  ): Promise<{
+    valid: boolean;
+    message: string;
+    range?: NumberingRange;
+  }> {
+    try {
+      // Buscar rango con ese prefijo
+      const ranges = await strapi.entityService.findMany(
+        'api::numering-range.numering-range',
+        {
+          filters: {
+            prefijo: prefijo,
+            activo: true,
+          },
+        }
+      ) as NumberingRange[];
+
+      if (!ranges || ranges.length === 0) {
+        return {
+          valid: false,
+          message: `No existe rango activo con prefijo ${prefijo}`,
+        };
+      }
+
+      const range = Array.isArray(ranges) ? ranges[0] : ranges;
+
+      // Validar que el consecutivo esté dentro del rango
+      if (consecutivo < range.desde || consecutivo > range.hasta) {
+        return {
+          valid: false,
+          message: `Consecutivo ${consecutivo} fuera del rango ${range.desde}-${range.hasta}`,
+          range,
+        };
+      }
+
+      return {
+        valid: true,
+        message: 'Número válido',
+        range,
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        message: `Error validando: ${(error as Error).message}`,
+      };
+    }
+  },
+
+  /**
+   * 🔄 Sincronizar rangos con Factus API
+   * 
+   * Esta función consultaría los rangos desde Factus
+   * y los actualizaría en la base de datos local
+   */
+  async syncWithFactus(): Promise<{
+    success: boolean;
+    synced: number;
+    errors: string[];
+  }> {
+    const errors: string[] = [];
+    let synced = 0;
+
+    try {
+      strapi.log.info('🔄 Sincronizando rangos con Factus...');
+
+      // Obtener token
+      const authService = strapi.service('api::factus.factus-auth');
+      const token = await authService.getToken();
+
+      // Obtener configuración
+      const configResult = await strapi.entityService.findMany(
+        'api::factus-config.factus-config'
+      );
+      const config = Array.isArray(configResult) ? configResult[0] : configResult;
+
+      // TODO: Implementar llamada a Factus para obtener rangos
+      // const response = await axios.get(`${config.api_url}/api/v1/numbering-ranges`, {
+      //   headers: { Authorization: `Bearer ${token}` }
+      // });
+
+      // Por ahora, solo retornamos éxito
+      strapi.log.info('✅ Sincronización completada');
+
+      return {
+        success: true,
+        synced,
+        errors,
+      };
+    } catch (error) {
+      errors.push((error as Error).message);
+      return {
+        success: false,
+        synced,
+        errors,
+      };
+    }
+  },
+
+  /**
+   * 🆕 Crear nuevo rango de numeración
+   * 
+   * Helper para crear rangos desde código
+   */
+  async createRange(data: {
+    factus_id: number;
+    nombre: string;
+    prefijo: string;
+    resolucion_dian: string;
+    desde: number;
+    hasta: number;
+    tipo_documento?: 'factura' | 'nota_credito' | 'nota_debito' | 'factura_exportacion';
+    fecha_resolucion?: Date | string;
+    fecha_vencimiento?: Date | string;
+  }): Promise<NumberingRange> {
+    try {
+      const range = await strapi.entityService.create(
+        'api::numering-range.numering-range',
+        {
+          data: {
+            ...data,
+            consecutivo_actual: data.desde,
+            tipo_documento: data.tipo_documento || 'factura',
+            activo: true,
+            publishedAt: new Date(),
+          },
+        }
+      ) as NumberingRange;
+
+      strapi.log.info(`✅ Rango creado: ${range.nombre} (${range.prefijo})`);
+
+      return range;
+    } catch (error) {
+      strapi.log.error('❌ Error creando rango:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * 🔒 Desactivar rango
+   * 
+   * @param rangeId - ID del rango
+   */
+  async deactivateRange(rangeId: number): Promise<void> {
+    try {
+      await strapi.entityService.update(
+        'api::numering-range.numering-range',
+        rangeId,
+        {
+          data: {
+            activo: false,
+          },
+        }
+      );
+
+      strapi.log.info(`🔒 Rango ${rangeId} desactivado`);
+    } catch (error) {
+      strapi.log.error('❌ Error desactivando rango:', error);
+      throw error;
+    }
+  },
+};

@@ -1,0 +1,83 @@
+{
+  "kind": "singleType",
+  "collectionName": "factus_configs",
+  "info": {
+    "singularName": "factus-config",
+    "pluralName": "factus-configs",
+    "displayName": "factus-config"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "api_url": {
+      "type": "string",
+      "required": true
+    },
+    "api_username": {
+      "type": "string",
+      "required": true
+    },
+    "api_password": {
+      "type": "string",
+      "private": true,
+      "required": true
+    },
+    "token_acceso": {
+      "type": "string",
+      "private": true,
+      "required": false
+    },
+    "token_expiracion": {
+      "type": "datetime"
+    },
+    "refresh_token": {
+      "type": "string",
+      "private": true,
+      "required": false
+    },
+    "ambiente": {
+      "type": "enumeration",
+      "default": "Produccion",
+      "enum": [
+        "Produccion",
+        "Habilitacion",
+        "Pruebas"
+      ]
+    },
+    "empresa_nit": {
+      "type": "string",
+      "required": true
+    },
+    "empresa_nombre": {
+      "type": "string",
+      "required": true
+    },
+    "empresa_direccion": {
+      "type": "string"
+    },
+    "empresa_telefono": {
+      "type": "string"
+    },
+    "empresa_email": {
+      "type": "email"
+    },
+    "prefijo_factura": {
+      "type": "string",
+      "default": "FV"
+    },
+    "resolucion_dian": {
+      "type": "string"
+    },
+    "resolucion_desde": {
+      "type": "integer"
+    },
+    "resolucion_hasta": {
+      "type": "integer"
+    },
+    "consecutivo_actual": {
+      "type": "integer"
+    }
+  }
+}

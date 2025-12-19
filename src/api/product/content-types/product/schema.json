@@ -1,0 +1,133 @@
+{
+  "kind": "collectionType",
+  "collectionName": "products",
+  "info": {
+    "singularName": "product",
+    "pluralName": "products",
+    "displayName": "Product",
+    "description": "Catálogo de productos y servicios"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "codigo": {
+      "type": "string",
+      "maxLength": 50,
+      "required": true,
+      "unique": true
+    },
+    "nombre": {
+      "type": "string",
+      "maxLength": 255,
+      "required": true
+    },
+    "descripcion": {
+      "type": "text"
+    },
+    "tipo": {
+      "type": "enumeration",
+      "required": true,
+      "default": "producto",
+      "enum": [
+        "producto",
+        "servicio"
+      ]
+    },
+    "precio_unitario": {
+      "type": "decimal",
+      "required": true,
+      "min": 0
+    },
+    "unidad_medida": {
+      "type": "enumeration",
+      "required": true,
+      "default": "UND",
+      "enum": [
+        "UND",
+        "KG",
+        "LB",
+        "MT",
+        "M2",
+        "M3",
+        "LT",
+        "GL",
+        "HR",
+        "DIA"
+      ]
+    },
+    "unidad_medida_id": {
+      "type": "integer",
+      "default": 70
+    },
+    "codigo_unspsc": {
+      "type": "string",
+      "maxLength": 10
+    },
+    "codigo_estandar_id": {
+      "type": "integer",
+      "default": 1
+    },
+    "iva_porcentaje": {
+      "type": "decimal",
+      "min": 0,
+      "max": 100,
+      "default": 19
+    },
+    "aplica_iva": {
+      "type": "boolean",
+      "default": true
+    },
+    "ico_porcentaje": {
+      "type": "decimal",
+      "min": 0,
+      "max": 100,
+      "default": 0
+    },
+    "aplica_ico": {
+      "type": "boolean",
+      "default": false
+    },
+    "ica_porcentaje": {
+      "type": "decimal",
+      "default": 0,
+      "min": 0,
+      "max": 100
+    },
+    "aplica_ica": {
+      "type": "boolean",
+      "default": false
+    },
+    "retenciones": {
+      "type": "json",
+      "default": []
+    },
+    "esquema_id": {
+      "type": "string",
+      "default": "1"
+    },
+    "tributo_id": {
+      "type": "integer",
+      "default": 1
+    },
+    "stock_actual": {
+      "type": "integer",
+      "default": 0
+    },
+    "stock_minimo": {
+      "type": "integer",
+      "default": 0
+    },
+    "activo": {
+      "type": "boolean",
+      "default": true
+    },
+    "invoice_items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::invoice-item.invoice-item",
+      "mappedBy": "product"
+    }
+  }
+}

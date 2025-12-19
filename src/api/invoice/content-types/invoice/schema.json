@@ -1,0 +1,177 @@
+{
+  "kind": "collectionType",
+  "collectionName": "invoices",
+  "info": {
+    "singularName": "invoice",
+    "pluralName": "invoices",
+    "displayName": "Invoice",
+    "description": "Facturas electrónicas"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "numero_factura": {
+      "type": "string",
+      "maxLength": 50,
+      "unique": true
+    },
+    "prefijo": {
+      "type": "string",
+      "maxLength": 10
+    },
+    "consecutivo": {
+      "type": "integer"
+    },
+    "fecha_emision": {
+      "type": "datetime",
+      "required": true
+    },
+    "fecha_vencimiento": {
+      "type": "date",
+      "required": false
+    },
+    "tipo_operacion": {
+      "type": "enumeration",
+      "required": true,
+      "default": "Contado",
+      "enum": [
+        "Venta",
+        "Credito",
+        "Contado",
+        "Exportacion"
+      ]
+    },
+    "forma_pago": {
+      "type": "enumeration",
+      "enum": [
+        "Efectivo",
+        "Credito",
+        "Tarjeta",
+        "Transferencia",
+        "Cheque"
+      ]
+    },
+    "medio_pago": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "subtotal": {
+      "type": "decimal",
+      "required": true
+    },
+    "total_iva": {
+      "type": "decimal"
+    },
+    "total_ico": {
+      "type": "decimal"
+    },
+    "total_descuentos": {
+      "type": "decimal",
+      "required": true,
+      "default": 0
+    },
+    "total": {
+      "type": "decimal",
+      "required": true
+    },
+    "observaciones": {
+      "type": "text"
+    },
+    "estado_local": {
+      "type": "enumeration",
+      "default": "Borrador",
+      "enum": [
+        "Borrador",
+        "Enviada",
+        "Aceptada",
+        "Rechazada",
+        "Anulada"
+      ]
+    },
+    "estado_dian": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "factus_id": {
+      "type": "string"
+    },
+    "factus_cude": {
+      "type": "string"
+    },
+    "factus_qr": {
+      "type": "string"
+    },
+    "factus_qr_image": {
+      "type": "text"
+    },
+    "url_pdf": {
+      "type": "string"
+    },
+    "url_xml": {
+      "type": "string"
+    },
+    "url_publica": {
+      "type": "string"
+    },
+    "respuesta_factus": {
+      "type": "json"
+    },
+    "errores_factus": {
+      "type": "json"
+    },
+    "fecha_envio_dian": {
+      "type": "datetime"
+    },
+    "fecha_validacion_dian": {
+      "type": "datetime"
+    },
+    "intentos_envio": {
+      "type": "integer",
+      "default": 0
+    },
+    "enviar_email": {
+      "type": "boolean",
+      "default": false
+    },
+    "orden_compra_referencia": {
+      "type": "string",
+      "maxLength": 100
+    },
+    "orden_compra_fecha": {
+      "type": "date"
+    },
+    "periodo_facturacion_inicio": {
+      "type": "datetime"
+    },
+    "periodo_facturacion_fin": {
+      "type": "datetime"
+    },
+    "es_instrumento_negociable": {
+      "type": "boolean",
+      "default": false
+    },
+    "tiene_reclamo": {
+      "type": "boolean",
+      "default": false
+    },
+    "client": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::client.client",
+      "inversedBy": "invoices"
+    },
+    "invoice_items": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::invoice-item.invoice-item",
+      "mappedBy": "invoice"
+    },
+    "numering_range": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::numering-range.numering-range"
+    }
+  }
+}

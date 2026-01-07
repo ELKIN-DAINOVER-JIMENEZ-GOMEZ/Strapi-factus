@@ -481,7 +481,6 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
   attributes: {
     activo: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
     ciudad: Schema.Attribute.String &
-      Schema.Attribute.Required &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 100;
       }>;
@@ -546,8 +545,7 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Required &
       Schema.Attribute.DefaultTo<'responsable_iva'>;
-    responsabilidades_fiscales: Schema.Attribute.JSON &
-      Schema.Attribute.DefaultTo<[]>;
+    responsabilidades_fiscales: Schema.Attribute.JSON;
     telefono: Schema.Attribute.String &
       Schema.Attribute.SetMinMaxLength<{
         maxLength: 20;
@@ -600,6 +598,7 @@ export interface ApiFactusConfigFactusConfig extends Struct.SingleTypeSchema {
       'api::factus-config.factus-config'
     > &
       Schema.Attribute.Private;
+    numbering_range_id: Schema.Attribute.Integer;
     prefijo_factura: Schema.Attribute.String & Schema.Attribute.DefaultTo<'FV'>;
     publishedAt: Schema.Attribute.DateTime;
     refresh_token: Schema.Attribute.String & Schema.Attribute.Private;
@@ -958,7 +957,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
         number
       >;
     publishedAt: Schema.Attribute.DateTime;
-    retenciones: Schema.Attribute.JSON & Schema.Attribute.DefaultTo<[]>;
+    retenciones: Schema.Attribute.JSON;
     stock_actual: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     stock_minimo: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
     tipo: Schema.Attribute.Enumeration<['producto', 'servicio']> &

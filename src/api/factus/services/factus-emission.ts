@@ -37,94 +37,176 @@ export default {
    * @param invoiceId - ID de la factura en Strapi
    * @returns Resultado de la emisión
    */
-  async emitInvoice(invoiceId: number): Promise<FactusOperationResult<FactusEmissionResponse>> {
-    try {
-      strapi.log.info(`📤 [EMISSION] Iniciando emisión de factura ${invoiceId}`);
+ /**
+ * SOLUCIÓN 3: Mejorar Flujo de Emisión
+ * Ubicación: src/api/factus/services/factus-emission.ts
+ * 
+ * Agregar validación detallada antes de enviar a Factus
+ */
 
-      // 1. Validar factura
-      const mapperService = strapi.service('api::factus.factus-mapper');
-      const validation = await mapperService.validateInvoice(invoiceId);
+async emitInvoice(invoiceId: number): Promise<FactusOperationResult<FactusEmissionResponse>> {
+  try {
+    strapi.log.info(`📤 [EMISSION] Iniciando emisión de factura ${invoiceId}`);
 
-      if (!validation.valid) {
-        return {
-          success: false,
-          message: '❌ Factura inválida',
-          error: validation.errors.join(', '),
-          timestamp: new Date().toISOString(),
-        };
-      }
+    // 1. Validar factura
+    const mapperService = strapi.service('api::factus.factus-mapper');
+    const validation = await mapperService.validateInvoice(invoiceId);
 
-      // 2. Mapear factura al formato Factus
-      const payload = await mapperService.mapInvoiceToFactus(invoiceId);
-
-      strapi.log.info('✅ Factura mapeada exitosamente');
-      strapi.log.debug('Payload a enviar:', JSON.stringify(payload, null, 2));
-
-      // 3. Obtener token de autenticación
-      const authService = strapi.service('api::factus.factus-auth');
-      const token = await authService.getToken();
-
-      // 4. Obtener configuración para URL base
-      const configResult = await strapi.entityService.findMany(
-  'api::factus-config.factus-config'
-) as any;
-const config: FactusConfig = Array.isArray(configResult) 
-  ? configResult[0] 
-  : configResult;
-
-      if (!config) {
-        throw new Error('Configuración de Factus no encontrada');
-      }
-
-      // 5. Enviar factura a Factus usando factus-sender
-      strapi.log.info('🚀 Enviando factura a Factus API...');
-
-      const senderService = strapi.service('api::factus.factus-sender');
-      const sendResult = await senderService.sendInvoice(payload, {
-        timeout: 30000,
-        retries: 2,
-        retryDelay: 2000,
-      });
-
-      if (!sendResult.success) {
-        throw new Error(sendResult.error || 'Error enviando factura');
-      }
-
-      strapi.log.info('✅ Respuesta recibida de Factus');
-      strapi.log.debug('Respuesta:', JSON.stringify(sendResult.data, null, 2));
-
-      // 6. Actualizar factura en Strapi con la respuesta
-      await this.updateInvoiceStatus(invoiceId, sendResult.data, 'exitosa');
-
+    if (!validation.valid) {
+      strapi.log.error('❌ Validación fallida:', validation.errors);
       return {
-        success: true,
-        message: '✅ Factura emitida exitosamente',
-        data: sendResult.data,
+        success: false,
+        message: '❌ Factura inválida',
+        error: validation.errors.join(', '),
         timestamp: new Date().toISOString(),
       };
+    }
 
-    } catch (error) {
-      strapi.log.error('❌ Error emitiendo factura:', error);
+    strapi.log.info('✅ Factura validada correctamente');
 
-      // El error ya fue manejado por factus-sender
-      const errorMessage = (error as Error).message;
+    // ✅ NUEVO: Obtener factura con relaciones completas
+    const invoice = await strapi.db.query('api::invoice.invoice').findOne({
+      where: { id: invoiceId },
+      populate: {
+        client: true,
+        invoice_items: {
+          populate: {
+            product: true,
+          },
+        },
+      },
+    }) as any;
 
+    // ✅ NUEVO: Validar cliente tiene datos completos
+    if (!invoice.client) {
+      return {
+        success: false,
+        message: '❌ Factura sin cliente',
+        error: 'La factura no tiene cliente asociado',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // ✅ NUEVO: Completar datos del cliente si faltan
+    if (!invoice.client.ciudad_codigo) {
+      strapi.log.warn('⚠️ Cliente sin ciudad_codigo, usando por defecto: 11001');
+      invoice.client.ciudad_codigo = '11001';
+    }
+
+    if (!invoice.client.ciudad) {
+      strapi.log.warn('⚠️ Cliente sin ciudad, usando por defecto: Bogotá');
+      invoice.client.ciudad = 'Bogotá';
+    }
+
+    if (!invoice.client.departamento) {
+      strapi.log.warn('⚠️ Cliente sin departamento, usando por defecto: Bogotá D.C.');
+      invoice.client.departamento = 'Bogotá D.C.';
+    }
+
+    if (!invoice.client.telefono) {
+      strapi.log.warn('⚠️ Cliente sin teléfono, usando por defecto: 0000000');
+      invoice.client.telefono = '0000000';
+    }
+
+    // ✅ NUEVO: Log detallado de datos del cliente
+    strapi.log.info('📋 Datos del cliente a enviar:');
+    strapi.log.info(`   ├─ Nombre: ${invoice.client.nombre_completo}`);
+    strapi.log.info(`   ├─ Documento: ${invoice.client.tipo_documento}-${invoice.client.numero_documento}`);
+    strapi.log.info(`   ├─ Email: ${invoice.client.email}`);
+    strapi.log.info(`   ├─ Ciudad: ${invoice.client.ciudad} (${invoice.client.ciudad_codigo})`);
+    strapi.log.info(`   ├─ Departamento: ${invoice.client.departamento}`);
+    strapi.log.info(`   └─ Teléfono: ${invoice.client.telefono}`);
+
+    // 2. Mapear factura al formato Factus
+    const payload = await mapperService.mapInvoiceToFactus(invoiceId);
+
+    strapi.log.info('✅ Factura mapeada exitosamente');
+    strapi.log.debug('📦 Payload completo:', JSON.stringify(payload, null, 2));
+
+    // ✅ NUEVO: Validar payload antes de enviar
+    const senderService = strapi.service('api::factus.factus-sender');
+    const payloadValidation = senderService.validatePayload(payload);
+
+    if (!payloadValidation.valid) {
+      strapi.log.error('❌ Payload inválido:', payloadValidation.errors);
+      return {
+        success: false,
+        message: '❌ Payload inválido',
+        error: payloadValidation.errors.join(', '),
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    strapi.log.info('✅ Payload validado correctamente');
+
+    // 3. Obtener token de autenticación
+    const authService = strapi.service('api::factus.factus-auth');
+    const token = await authService.getToken();
+
+    // 4. Enviar factura a Factus
+    strapi.log.info('🚀 Enviando factura a Factus API...');
+
+    const sendResult = await senderService.sendInvoice(payload, {
+      timeout: 30000,
+      retries: 2,
+      retryDelay: 2000,
+    });
+
+    if (!sendResult.success) {
+      strapi.log.error('❌ Error en respuesta de Factus:', sendResult);
+      
       // Actualizar factura con el error
+      await this.updateInvoiceStatus(
+        invoiceId,
+        sendResult.data || {},
+        'fallida',
+        [{ message: sendResult.error || 'Error enviando factura' }]
+      );
+
+      return {
+        success: false,
+        message: '❌ Error al emitir factura',
+        error: sendResult.error || 'Error enviando factura',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    strapi.log.info('✅ Respuesta recibida de Factus');
+
+    // 5. Actualizar factura en Strapi con la respuesta
+    await this.updateInvoiceStatus(invoiceId, sendResult.data, 'exitosa');
+
+    return {
+      success: true,
+      message: '✅ Factura emitida exitosamente',
+      data: sendResult.data,
+      timestamp: new Date().toISOString(),
+    };
+
+  } catch (error) {
+    strapi.log.error('❌ Error inesperado emitiendo factura:', error);
+
+    // Intentar actualizar factura si es posible
+    try {
+      const errorMessage = (error as Error).message || 'Error desconocido';
       await this.updateInvoiceStatus(
         invoiceId,
         {},
         'fallida',
         [{ message: errorMessage }]
       );
-
-      return {
-        success: false,
-        message: '❌ Error al emitir factura',
-        error: errorMessage,
-        timestamp: new Date().toISOString(),
-      };
+    } catch (updateError) {
+      strapi.log.error('❌ Error actualizando factura con error:', updateError);
     }
-  },
+
+    return {
+      success: false,
+      message: '❌ Error al emitir factura',
+      error: (error as Error).message || 'Error desconocido',
+      timestamp: new Date().toISOString(),
+    };
+  }
+},
 
   /**
    * 🔄 Actualizar estado de factura en Strapi

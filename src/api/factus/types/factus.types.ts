@@ -241,6 +241,7 @@ export interface FactusOperationResult<T = any> {
   data?: T;
   error?: string | FactusError[];
   timestamp?: string;
+  statusCode?: number;
 }
 
 /**

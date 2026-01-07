@@ -14,8 +14,8 @@
   "attributes": {
     "nombre_completo": {
       "type": "string",
-      "required": true,
-      "maxLength": 255
+      "maxLength": 255,
+      "required": true
     },
     "tipo_documento": {
       "type": "enumeration",
@@ -31,9 +31,9 @@
     },
     "numero_documento": {
       "type": "string",
+      "maxLength": 20,
       "required": true,
-      "unique": true,
-      "maxLength": 20
+      "unique": true
     },
     "digito_verificacion": {
       "type": "string",
@@ -59,18 +59,18 @@
     },
     "direccion": {
       "type": "string",
-      "required": true,
-      "maxLength": 500
+      "maxLength": 500,
+      "required": true
     },
     "ciudad": {
       "type": "string",
-      "required": true,
-      "maxLength": 100
+      "maxLength": 100,
+      "required": false
     },
     "ciudad_codigo": {
       "type": "string",
-      "required": true,
-      "maxLength": 10
+      "maxLength": 10,
+      "required": true
     },
     "departamento": {
       "type": "string",
@@ -101,8 +101,7 @@
       ]
     },
     "responsabilidades_fiscales": {
-      "type": "json",
-      "default": []
+      "type": "json"
     },
     "activo": {
       "type": "boolean",

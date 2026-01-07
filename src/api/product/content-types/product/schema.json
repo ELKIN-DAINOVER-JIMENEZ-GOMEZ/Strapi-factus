@@ -71,9 +71,9 @@
     },
     "iva_porcentaje": {
       "type": "decimal",
+      "default": 19,
       "min": 0,
-      "max": 100,
-      "default": 19
+      "max": 100
     },
     "aplica_iva": {
       "type": "boolean",
@@ -81,9 +81,9 @@
     },
     "ico_porcentaje": {
       "type": "decimal",
+      "default": 0,
       "min": 0,
-      "max": 100,
-      "default": 0
+      "max": 100
     },
     "aplica_ico": {
       "type": "boolean",
@@ -100,8 +100,7 @@
       "default": false
     },
     "retenciones": {
-      "type": "json",
-      "default": []
+      "type": "json"
     },
     "esquema_id": {
       "type": "string",

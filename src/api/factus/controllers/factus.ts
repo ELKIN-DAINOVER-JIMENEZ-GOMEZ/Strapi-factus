@@ -72,6 +72,7 @@ export default {
       };
     }
   },
+  
 
   // ═══════════════════════════════════════════════════════════
   // ENDPOINTS DE MUNICIPIOS
@@ -407,6 +408,10 @@ export default {
    * GET /api/factus/download-pdf/:documentId
    * Descargar PDF de factura
    */
+  /**
+   * 📥 Descargar PDF de factura
+   * GET /api/factus/download-pdf/:documentId
+   */
   async downloadPDF(ctx) {
     try {
       const { documentId } = ctx.params;
@@ -416,62 +421,288 @@ export default {
         return ctx.badRequest('documentId es requerido');
       }
 
+      strapi.log.info(`📥 [DOWNLOAD-PDF] Iniciando descarga para documento: ${documentId}`);
+
+      // ✅ PASO 1: Determinar si es ID de Strapi (número) o factus_id (string con letras)
+      let invoice = null;
+      let factusDocumentId = null;
+      
+      // Detectar si es un número puro (ID de Strapi) o un string con letras (factus_id)
+      const isNumericId = /^\d+$/.test(documentId);
+
+      try {
+        if (isNumericId) {
+          // ✅ Es ID de Strapi (105, 106, etc.)
+          strapi.log.info(`🔢 Buscando factura por ID de Strapi: ${documentId}`);
+          
+          invoice = await strapi.db.query('api::invoice.invoice').findOne({
+            where: { id: parseInt(documentId) },
+            select: ['*'],
+          });
+        } else {
+          // ✅ Es factus_id (SETP990000049, etc.)
+          strapi.log.info(`🔤 Buscando factura por factus_id: ${documentId}`);
+          
+          invoice = await strapi.db.query('api::invoice.invoice').findOne({
+            where: { factus_id: documentId },
+            select: ['*'],
+          });
+          
+          // Si lo encontramos por factus_id, ya tenemos el ID
+          if (invoice) {
+            factusDocumentId = documentId;
+          }
+        }
+        
+        if (!invoice) {
+          strapi.log.error(`❌ Factura ${documentId} NO encontrada en DB`);
+        } else {
+          strapi.log.info(`📊 Factura encontrada en DB:`);
+          strapi.log.info(`   - ID Strapi: ${invoice.id}`);
+          strapi.log.info(`   - factus_id: ${invoice?.factus_id || '❌ NO EXISTE'}`);
+          strapi.log.info(`   - estado_local: ${invoice?.estado_local}`);
+          strapi.log.info(`   - estado_dian: ${invoice?.estado_dian || 'N/A'}`);
+          
+          // Si buscamos por ID de Strapi, extraer el factus_id
+          if (isNumericId) {
+            if (invoice?.factus_id) {
+              factusDocumentId = invoice.factus_id;
+              strapi.log.info(`✅ Usando factus_id: ${factusDocumentId}`);
+            } else {
+              strapi.log.warn('⚠️ La factura NO tiene factus_id guardado');
+              
+              // ✅ Intentar extraer de respuesta_factus si existe
+              if (invoice?.respuesta_factus) {
+                strapi.log.info('🔍 Intentando extraer de respuesta_factus...');
+                
+                const extracted = this.extractFactusId(invoice.respuesta_factus);
+                
+                if (extracted) {
+                  factusDocumentId = extracted;
+                  strapi.log.info(`✅ ID extraído de respuesta: ${factusDocumentId}`);
+                  
+                  // Guardar para futuras referencias
+                  await strapi.db.query('api::invoice.invoice').update({
+                    where: { id: invoice.id },
+                    data: { factus_id: extracted }
+                  });
+                  strapi.log.info('💾 factus_id guardado en DB para futuras descargas');
+                } else {
+                  strapi.log.error('❌ No se pudo extraer factus_id de respuesta_factus');
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        strapi.log.error('❌ Error buscando factura en DB:', e.message);
+        strapi.log.error('Stack:', e.stack);
+      }
+
+      // ✅ VALIDACIÓN: ¿Tenemos un factus_id válido?
+      if (!factusDocumentId) {
+        strapi.log.error('❌ CRÍTICO: No se pudo determinar el factus_id');
+        
+        return ctx.badRequest({
+          success: false,
+          message: 'No se puede descargar el PDF',
+          details: invoice 
+            ? 'La factura existe pero no tiene un factus_id asociado. Esto significa que la emisión a Factus falló o no se completó correctamente. Por favor, verifica el estado de la factura e intenta emitirla nuevamente.'
+            : 'Factura no encontrada en el sistema.',
+          debug: {
+            receivedId: documentId,
+            isNumericId: isNumericId,
+            has_invoice: !!invoice,
+            has_factus_id: !!invoice?.factus_id,
+            has_respuesta_factus: !!invoice?.respuesta_factus,
+          }
+        });
+      }
+
+      // ✅ PASO 2: Descargar el PDF desde Factus
+      strapi.log.info(`📥 Descargando PDF desde Factus con ID: ${factusDocumentId}`);
+      
       const emissionService = strapi.service('api::factus.factus-emission');
-      const result = await emissionService.downloadPDF(documentId);
+      const result = await emissionService.downloadPDF(factusDocumentId);
 
       if (!result.success) {
-        ctx.status = 400;
-        ctx.body = {
+        strapi.log.error('❌ Error descargando PDF desde Factus:', result.error);
+        return ctx.badRequest({
           success: false,
+          message: 'Error descargando PDF desde Factus',
           error: result.error,
-        };
-        return;
+          factus_id: factusDocumentId,
+        });
       }
 
-      // Si solicita blob o si existe PDF en base64, descargar como archivo
-      if (returnBlob === 'true' && result.data?.pdf_base64) {
-        try {
-          // Convertir base64 a buffer
-          const buffer = Buffer.from(result.data.pdf_base64, 'base64');
+      // ✅ PASO 3: Procesar y enviar el PDF
+      const pdfData = result.data?.data || result.data;
+      const pdfBase64 = pdfData?.pdf_base_64_encoded || pdfData?.pdf_base64;
+      const fileName = pdfData?.file_name || `factura-${factusDocumentId}`;
+
+      if (pdfBase64) {
+        strapi.log.info('✅ PDF obtenido como base64');
+        
+        if (returnBlob === 'true') {
+          // Convertir base64 a buffer y enviar como blob
+          const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+
+          ctx.set('Content-Type', 'application/pdf');
+          ctx.set('Content-Disposition', `attachment; filename="${fileName}.pdf"`);
+          ctx.body = pdfBuffer;
           
-          ctx.type = 'application/pdf';
-          ctx.set('Content-Disposition', `attachment; filename="factura-${documentId}.pdf"`);
-          ctx.body = buffer;
-          ctx.status = 200;
+          strapi.log.info(`✅ PDF enviado como blob (${pdfBuffer.length} bytes)`);
           return;
-        } catch (error) {
-          strapi.log.error('❌ Error convirtiendo base64 a PDF:', error);
+        } else {
+          // Enviar como JSON con base64
+          return ctx.send({
+            success: true,
+            data: {
+              file_name: fileName,
+              pdf_base64: pdfBase64,
+            },
+          });
         }
-      }
+      } else if (pdfData?.pdf_url) {
+        // Descargar desde URL y enviar
+        strapi.log.info(`📥 Descargando PDF desde URL: ${pdfData.pdf_url}`);
+        
+        const pdfResponse = await axios.get(pdfData.pdf_url, {
+          responseType: 'arraybuffer',
+          timeout: 30000,
+        });
 
-      // Si existe URL, redirigir o devolverla
-      if (result.data?.pdf_url) {
-        ctx.status = 200;
-        ctx.body = {
-          success: true,
-          pdf_url: result.data.pdf_url,
-          pdf_base64: result.data.pdf_base64 || null,
-          message: 'URL del PDF disponible'
-        };
+        ctx.set('Content-Type', 'application/pdf');
+        ctx.set('Content-Disposition', `attachment; filename="${fileName}.pdf"`);
+        ctx.body = Buffer.from(pdfResponse.data);
+        
+        strapi.log.info('✅ PDF descargado y enviado');
         return;
+      } else {
+        strapi.log.error('❌ La respuesta de Factus no contiene PDF');
+        return ctx.badRequest({
+          success: false,
+          message: 'La respuesta de Factus no contiene el PDF',
+          data: pdfData,
+        });
       }
 
-      // Fallback: devolver respuesta JSON
-      ctx.status = 200;
-      ctx.body = {
-        success: true,
-        data: result.data,
-        message: 'Datos del PDF disponibles'
-      };
     } catch (error) {
-      ctx.status = 500;
-      ctx.body = {
+      strapi.log.error('❌ Error en downloadPDF controller:', error);
+      return ctx.internalServerError({
         success: false,
-        error: (error as Error).message,
-      };
+        message: 'Error interno del servidor',
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      });
     }
   },
 
+  /**
+   * 🔧 Método auxiliar para extraer factus_id de respuesta
+   */
+  extractFactusId(response: any): string | null {
+    if (!response) return null;
+    
+    strapi.log.debug('🔍 Analizando respuesta para extraer factus_id...');
+    
+    // Prioridad 1: Campo "number" (el más usado para descargas)
+    if (response.number && typeof response.number === 'string') {
+      return String(response.number).trim();
+    }
+    
+    // Prioridad 2: data.bill.number (respuesta anidada)
+    if (response?.data?.bill?.number && typeof response.data.bill.number === 'string') {
+      return String(response.data.bill.number).trim();
+    }
+    
+    // Prioridad 3: Otros campos como fallback
+    if (response?.data?.bill?.id) {
+      return String(response.data.bill.id).trim();
+    }
+    
+    if (response.id && (typeof response.id === 'string' || typeof response.id === 'number')) {
+      return String(response.id).trim();
+    }
+    
+    if (response.document_id && typeof response.document_id === 'string') {
+      return response.document_id.trim();
+    }
+    
+    if (response.uuid && typeof response.uuid === 'string') {
+      return response.uuid.trim();
+    }
+    
+    strapi.log.error('❌ No se pudo extraer factus_id de ningún campo conocido');
+    return null;
+  },
+
+
+
+  /**
+   * Método auxiliar para extraer document_id de respuesta de Factus
+   */
+  extractDocumentId(response: any): string | null {
+    if (!response) return null;
+    
+    strapi.log.info('🔍 extractDocumentId - Analizando respuesta Factus...');
+    
+    // PRIORIDAD 1: Buscar en rutas NESTED (Factus API devuelve: { data: { bill: { number: "SETP..." } } })
+    if (response?.data?.bill?.number && typeof response.data.bill.number === 'string') {
+      const id = String(response.data.bill.number).trim();
+      strapi.log.info(`✅ extractDocumentId: Encontrado en 'data.bill.number': ${id}`);
+      return id;
+    }
+    
+    if (response?.data?.bill?.id && (typeof response.data.bill.id === 'string' || typeof response.data.bill.id === 'number')) {
+      const id = String(response.data.bill.id).trim();
+      strapi.log.info(`✅ extractDocumentId: Encontrado en 'data.bill.id': ${id}`);
+      return id;
+    }
+    
+    if (response?.data?.bill?.cufe && typeof response.data.bill.cufe === 'string') {
+      const cufe = String(response.data.bill.cufe).trim();
+      strapi.log.info(`✅ extractDocumentId: Encontrado en 'data.bill.cufe': ${cufe}`);
+      return cufe;
+    }
+    
+    // PRIORIDAD 2: Campos de nivel superior
+    if (response.number && typeof response.number === 'string') {
+      strapi.log.info(`✅ extractDocumentId: Encontrado en 'number': ${response.number}`);
+      return String(response.number).trim();
+    }
+    
+    if (response.id && (typeof response.id === 'string' || typeof response.id === 'number')) {
+      strapi.log.info(`✅ extractDocumentId: Encontrado en 'id': ${response.id}`);
+      return String(response.id).trim();
+    }
+    
+    if (response.document_id && typeof response.document_id === 'string') {
+      strapi.log.info(`✅ extractDocumentId: Encontrado en 'document_id': ${response.document_id}`);
+      return response.document_id.trim();
+    }
+    
+    if (response.uuid && typeof response.uuid === 'string') {
+      strapi.log.info(`✅ extractDocumentId: Encontrado en 'uuid': ${response.uuid}`);
+      return response.uuid.trim();
+    }
+    
+    if (response.cufe && typeof response.cufe === 'string') {
+      const cufe = String(response.cufe).trim();
+      strapi.log.info(`✅ extractDocumentId: Encontrado 'cufe': ${cufe}`);
+      return cufe;
+    }
+    
+    if (response.cude && typeof response.cude === 'string') {
+      const cude = String(response.cude).trim();
+      strapi.log.info(`✅ extractDocumentId: Encontrado 'cude': ${cude}`);
+      return cude;
+    }
+    
+    strapi.log.error('❌ extractDocumentId: No se pudo identificar el ID de documento');
+    strapi.log.debug(`📋 Rutas verificadas: data.bill.number, data.bill.id, data.bill.cufe, number, id, document_id, uuid, cufe, cude`);
+    return null;
+  },
   // ═══════════════════════════════════════════════════════════
   // ENDPOINTS DE RANGOS DE NUMERACIÓN
   // ═══════════════════════════════════════════════════════════

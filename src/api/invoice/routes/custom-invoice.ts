@@ -25,5 +25,25 @@ export default {
         middlewares: [],
       },
     },
+    {
+      method: 'GET',
+      path: '/invoices/without-client',
+      handler: 'invoice.findWithoutClient',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/invoices/assign-client',
+      handler: 'invoice.assignClient',
+      config: {
+        auth: false,
+        policies: [],
+        middlewares: [],
+      },
+    },
   ],
 };

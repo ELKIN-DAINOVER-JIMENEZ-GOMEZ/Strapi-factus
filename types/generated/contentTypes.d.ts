@@ -563,6 +563,144 @@ export interface ApiClientClient extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiCreditNoteItemCreditNoteItem
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'credit_note_items';
+  info: {
+    description: 'Items de notas cr\u00E9dito';
+    displayName: 'Credit Note Item';
+    pluralName: 'credit-note-items';
+    singularName: 'credit-note-item';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    cantidad: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    codigo_producto: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 50;
+      }>;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    credit_note: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::credit-note.credit-note'
+    >;
+    descripcion: Schema.Attribute.Text;
+    descuento_porcentaje: Schema.Attribute.Decimal &
+      Schema.Attribute.DefaultTo<0>;
+    descuento_valor: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    es_excluido: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    ico_porcentaje: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    ico_valor: Schema.Attribute.Decimal;
+    iva_porcentaje: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<19>;
+    iva_valor: Schema.Attribute.Decimal;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::credit-note-item.credit-note-item'
+    > &
+      Schema.Attribute.Private;
+    nombre_producto: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 500;
+      }>;
+    orden: Schema.Attribute.Integer;
+    precio_unitario: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    publishedAt: Schema.Attribute.DateTime;
+    subtotal: Schema.Attribute.Decimal;
+    total: Schema.Attribute.Decimal;
+    unidad_medida_id: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<70>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiCreditNoteCreditNote extends Struct.CollectionTypeSchema {
+  collectionName: 'credit_notes';
+  info: {
+    description: 'Notas Cr\u00E9dito electr\u00F3nicas';
+    displayName: 'Credit Note';
+    pluralName: 'credit-notes';
+    singularName: 'credit-note';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    client: Schema.Attribute.Relation<'manyToOne', 'api::client.client'>;
+    concepto_correccion_id: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<5>;
+    consecutivo: Schema.Attribute.Integer;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    credit_note_items: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::credit-note-item.credit-note-item'
+    >;
+    cude: Schema.Attribute.String;
+    descripcion_correccion: Schema.Attribute.Text;
+    enviar_email: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
+    errores_validacion: Schema.Attribute.JSON;
+    estado_dian: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 100;
+      }>;
+    estado_local: Schema.Attribute.Enumeration<
+      ['Borrador', 'Enviada', 'Aceptada', 'Rechazada', 'Anulada', 'Error']
+    > &
+      Schema.Attribute.DefaultTo<'Borrador'>;
+    factus_bill_id: Schema.Attribute.Integer;
+    factus_id: Schema.Attribute.String;
+    fecha_emision: Schema.Attribute.DateTime & Schema.Attribute.Required;
+    fecha_envio_dian: Schema.Attribute.DateTime;
+    fecha_validacion_dian: Schema.Attribute.DateTime;
+    intentos_envio: Schema.Attribute.Integer & Schema.Attribute.DefaultTo<0>;
+    invoice: Schema.Attribute.Relation<'manyToOne', 'api::invoice.invoice'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::credit-note.credit-note'
+    > &
+      Schema.Attribute.Private;
+    motivo_correccion: Schema.Attribute.String & Schema.Attribute.Required;
+    numering_range: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::numering-range.numering-range'
+    >;
+    numero_nota: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 50;
+      }>;
+    observaciones: Schema.Attribute.Text;
+    prefijo: Schema.Attribute.String &
+      Schema.Attribute.SetMinMaxLength<{
+        maxLength: 10;
+      }>;
+    public_url: Schema.Attribute.String;
+    publishedAt: Schema.Attribute.DateTime;
+    qr_code: Schema.Attribute.Text;
+    respuesta_factus: Schema.Attribute.JSON;
+    subtotal: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    total: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    total_descuentos: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<0>;
+    total_ico: Schema.Attribute.Decimal;
+    total_iva: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    url_pdf: Schema.Attribute.String;
+    url_xml: Schema.Attribute.String;
+  };
+}
+
 export interface ApiFactusConfigFactusConfig extends Struct.SingleTypeSchema {
   collectionName: 'factus_configs';
   info: {
@@ -584,6 +722,8 @@ export interface ApiFactusConfigFactusConfig extends Struct.SingleTypeSchema {
     api_url: Schema.Attribute.String & Schema.Attribute.Required;
     api_username: Schema.Attribute.String & Schema.Attribute.Required;
     consecutivo_actual: Schema.Attribute.Integer;
+    consecutivo_actual_nc: Schema.Attribute.Integer &
+      Schema.Attribute.DefaultTo<0>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -599,7 +739,10 @@ export interface ApiFactusConfigFactusConfig extends Struct.SingleTypeSchema {
     > &
       Schema.Attribute.Private;
     numbering_range_id: Schema.Attribute.Integer;
+    numbering_range_id_nc: Schema.Attribute.Integer;
     prefijo_factura: Schema.Attribute.String & Schema.Attribute.DefaultTo<'FV'>;
+    prefijo_nota_credito: Schema.Attribute.String &
+      Schema.Attribute.DefaultTo<'NC'>;
     publishedAt: Schema.Attribute.DateTime;
     refresh_token: Schema.Attribute.String & Schema.Attribute.Private;
     resolucion_desde: Schema.Attribute.Integer;
@@ -751,6 +894,7 @@ export interface ApiInvoiceInvoice extends Struct.CollectionTypeSchema {
       ['Borrador', 'Enviada', 'Aceptada', 'Rechazada', 'Anulada']
     > &
       Schema.Attribute.DefaultTo<'Borrador'>;
+    factus_bill_id: Schema.Attribute.Integer;
     factus_cude: Schema.Attribute.String;
     factus_id: Schema.Attribute.String;
     factus_qr: Schema.Attribute.String;
@@ -1488,6 +1632,8 @@ declare module '@strapi/strapi' {
       'admin::user': AdminUser;
       'api::audit-log.audit-log': ApiAuditLogAuditLog;
       'api::client.client': ApiClientClient;
+      'api::credit-note-item.credit-note-item': ApiCreditNoteItemCreditNoteItem;
+      'api::credit-note.credit-note': ApiCreditNoteCreditNote;
       'api::factus-config.factus-config': ApiFactusConfigFactusConfig;
       'api::invoice-item.invoice-item': ApiInvoiceItemInvoiceItem;
       'api::invoice.invoice': ApiInvoiceInvoice;

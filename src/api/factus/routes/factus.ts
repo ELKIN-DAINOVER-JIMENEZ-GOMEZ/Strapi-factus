@@ -77,6 +77,17 @@ export default {
 
     {
       method: 'GET',
+      path: '/factus/municipalities/autocomplete',
+      handler: 'factus.autocompleteMunicipality',
+      config: {
+        auth: false, // Permitir acceso sin autenticación para autocompletado
+        policies: [],
+        middlewares: [],
+      },
+    },
+
+    {
+      method: 'GET',
       path: '/factus/municipalities/generate-mapping',
       handler: 'factus.generateMapping',
       config: {

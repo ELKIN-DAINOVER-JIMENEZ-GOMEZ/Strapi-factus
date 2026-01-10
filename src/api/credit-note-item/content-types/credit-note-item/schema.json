@@ -1,0 +1,86 @@
+{
+  "kind": "collectionType",
+  "collectionName": "credit_note_items",
+  "info": {
+    "singularName": "credit-note-item",
+    "pluralName": "credit-note-items",
+    "displayName": "Credit Note Item",
+    "description": "Items de notas crédito"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "codigo_producto": {
+      "type": "string",
+      "maxLength": 50
+    },
+    "nombre_producto": {
+      "type": "string",
+      "required": true,
+      "maxLength": 500
+    },
+    "descripcion": {
+      "type": "text"
+    },
+    "cantidad": {
+      "type": "decimal",
+      "required": true
+    },
+    "precio_unitario": {
+      "type": "decimal",
+      "required": true
+    },
+    "descuento_porcentaje": {
+      "type": "decimal",
+      "default": 0
+    },
+    "descuento_valor": {
+      "type": "decimal",
+      "default": 0
+    },
+    "iva_porcentaje": {
+      "type": "decimal",
+      "default": 19
+    },
+    "iva_valor": {
+      "type": "decimal"
+    },
+    "ico_porcentaje": {
+      "type": "decimal",
+      "default": 0
+    },
+    "ico_valor": {
+      "type": "decimal"
+    },
+    "subtotal": {
+      "type": "decimal"
+    },
+    "total": {
+      "type": "decimal"
+    },
+    "es_excluido": {
+      "type": "boolean",
+      "default": false
+    },
+    "unidad_medida_id": {
+      "type": "integer",
+      "default": 70
+    },
+    "orden": {
+      "type": "integer"
+    },
+    "credit_note": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::credit-note.credit-note",
+      "inversedBy": "credit_note_items"
+    },
+    "product": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::product.product"
+    }
+  }
+}

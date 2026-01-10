@@ -15,15 +15,11 @@ export default {
    */
   async create(ctx) {
     try {
-      strapi.log.info('📝 [INVOICE] Creando nueva factura...');
-
       const { data } = ctx.request.body;
 
       if (!data) {
         return ctx.badRequest('No se enviaron datos');
       }
-
-      strapi.log.debug('📦 Datos recibidos:', data);
 
       // ═══════════════════════════════════════════════════════════
       // PASO 1: Validar datos requeridos
@@ -40,29 +36,52 @@ export default {
       // ═══════════════════════════════════════════════════════════
       const { invoice_items, ...invoiceData } = data;
 
-      strapi.log.info(`📋 Factura con ${invoice_items?.length || 0} items`);
+      // ═══════════════════════════════════════════════════════════
+      // PASO 2.5: Asegurar que client sea un ID válido y verificar que existe
+      // ═══════════════════════════════════════════════════════════
+      let clientId = invoiceData.client;
+      
+      // Si client es un objeto, extraer el ID
+      if (typeof clientId === 'object' && clientId !== null) {
+        clientId = clientId.id;
+      }
+      
+      // Convertir a número si es string
+      if (typeof clientId === 'string') {
+        clientId = parseInt(clientId, 10);
+      }
+      
+      // Verificar que el cliente existe y está publicado
+      if (clientId) {
+        const existingClient = await strapi.entityService.findOne('api::client.client', clientId);
+        if (!existingClient) {
+          return ctx.badRequest(`Cliente con ID ${clientId} no encontrado`);
+        }
+      }
 
       // ═══════════════════════════════════════════════════════════
       // PASO 3: Crear la factura (sin items aún)
       // ═══════════════════════════════════════════════════════════
+      
+      // Preparar datos con client como ID numérico
+      const invoiceCreateData = {
+        ...invoiceData,
+        client: clientId || null, // Usar el ID numérico del cliente
+        estado_local: invoiceData.estado_local || 'Borrador',
+        publishedAt: new Date(), // Auto-publicar
+      };
+      
       const invoice = await strapi.entityService.create(
         'api::invoice.invoice',
         {
-          data: {
-            ...invoiceData,
-            estado_local: invoiceData.estado_local || 'Borrador',
-            publishedAt: new Date(), // Auto-publicar
-          },
+          data: invoiceCreateData,
         }
       );
-
-      strapi.log.info(`✅ Factura creada con ID: ${invoice.id}`);
 
       // ═══════════════════════════════════════════════════════════
       // PASO 4: Crear los items asociados (si hay)
       // ═══════════════════════════════════════════════════════════
       if (invoice_items && Array.isArray(invoice_items) && invoice_items.length > 0) {
-        strapi.log.info(`📦 Creando ${invoice_items.length} items...`);
 
         const createdItems = [];
 
@@ -70,7 +89,6 @@ export default {
           try {
             // Validar que el item tenga los campos requeridos
             if (!itemData.codigo_producto || !itemData.nombre_producto) {
-              strapi.log.warn(`⚠️ Item ${index + 1} sin código o nombre, saltando...`);
               continue;
             }
 
@@ -87,14 +105,10 @@ export default {
             );
 
             createdItems.push(item);
-            strapi.log.debug(`✅ Item ${index + 1} creado: ${item.nombre_producto}`);
           } catch (itemError) {
-            strapi.log.error(`❌ Error creando item ${index + 1}:`, itemError);
             // Continuar con los demás items
           }
         }
-
-        strapi.log.info(`✅ ${createdItems.length} items creados`);
       }
 
       // ═══════════════════════════════════════════════════════════
@@ -116,8 +130,6 @@ export default {
         }
       );
 
-      strapi.log.info('✅ Factura creada exitosamente con todos sus items');
-
       // Retornar en formato Strapi
       ctx.send({
         data: fullInvoice,
@@ -125,8 +137,6 @@ export default {
       });
 
     } catch (error) {
-      strapi.log.error('❌ Error creando factura:', error);
-      
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       
       ctx.badRequest(`Error creando factura: ${errorMessage}`, {
@@ -150,8 +160,6 @@ export default {
         return ctx.badRequest('No se enviaron datos');
       }
 
-      strapi.log.info(`📝 [INVOICE] Actualizando factura ${id}...`);
-
       // Extraer items
       const { invoice_items, ...invoiceData } = data;
 
@@ -166,8 +174,6 @@ export default {
 
       // Si hay items nuevos, crearlos
       if (invoice_items && Array.isArray(invoice_items)) {
-        strapi.log.info(`📦 Actualizando items...`);
-
         // Aquí podrías implementar lógica para:
         // 1. Eliminar items antiguos
         // 2. Crear nuevos items
@@ -215,7 +221,6 @@ export default {
       });
 
     } catch (error) {
-      strapi.log.error('❌ Error actualizando factura:', error);
       ctx.badRequest(`Error actualizando factura: ${(error as Error).message}`);
     }
   },

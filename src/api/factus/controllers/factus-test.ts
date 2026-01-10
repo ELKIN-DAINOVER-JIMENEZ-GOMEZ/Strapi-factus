@@ -23,8 +23,6 @@ export default {
    */
   async testConnection(ctx: Context) {
     try {
-      strapi.log.info('🧪 [API] Test de conexión solicitado');
-
       const authService = strapi.service('api::factus.factus-auth');
       const result = await authService.testConnection();
 
@@ -49,7 +47,6 @@ export default {
         );
       }
     } catch (error) {
-      strapi.log.error('❌ [API] Error en test de conexión:', error);
       ctx.internalServerError('Error probando conexión con Factus');
     }
   },
@@ -69,8 +66,6 @@ export default {
    */
   async tokenInfo(ctx: Context) {
     try {
-      strapi.log.info('📊 [API] Información de token solicitada');
-
       const authService = strapi.service('api::factus.factus-auth');
       const info = await authService.getTokenInfo();
 
@@ -79,7 +74,6 @@ export default {
         data: info,
       });
     } catch (error) {
-      strapi.log.error('❌ [API] Error obteniendo info de token:', error);
       ctx.send(
         {
           success: false,
@@ -106,8 +100,6 @@ export default {
    */
   async forceRefresh(ctx: Context) {
     try {
-      strapi.log.info('🔄 [API] Renovación manual de token solicitada');
-
       const authService = strapi.service('api::factus.factus-auth');
       const token = await authService.refreshToken();
 
@@ -120,7 +112,6 @@ export default {
         },
       });
     } catch (error) {
-      strapi.log.error('❌ [API] Error renovando token:', error);
       ctx.send(
         {
           success: false,
@@ -147,8 +138,6 @@ export default {
    */
   async getNewToken(ctx: Context) {
     try {
-      strapi.log.info('🔑 [API] Solicitud de token nuevo');
-
       const authService = strapi.service('api::factus.factus-auth');
       const token = await authService.getToken();
 
@@ -161,7 +150,6 @@ export default {
         },
       });
     } catch (error) {
-      strapi.log.error('❌ [API] Error obteniendo token:', error);
       ctx.send(
         {
           success: false,
@@ -256,7 +244,6 @@ export default {
       }, allChecksPass ? 200 : 503);
 
     } catch (error) {
-      strapi.log.error('❌ [API] Error en health check:', error);
       ctx.send(
         {
           success: false,

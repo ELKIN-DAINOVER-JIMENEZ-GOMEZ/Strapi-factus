@@ -82,6 +82,17 @@
     },
     "consecutivo_actual": {
       "type": "integer"
+    },
+    "prefijo_nota_credito": {
+      "type": "string",
+      "default": "NC"
+    },
+    "consecutivo_actual_nc": {
+      "type": "integer",
+      "default": 0
+    },
+    "numbering_range_id_nc": {
+      "type": "integer"
     }
   }
 }

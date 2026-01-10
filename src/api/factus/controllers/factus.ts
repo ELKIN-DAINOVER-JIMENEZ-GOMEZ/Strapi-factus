@@ -20,8 +20,6 @@ export default {
         return ctx.badRequest('invoiceId es requerido');
       }
 
-      strapi.log.info(`📤 Solicitud de emisión de factura ${invoiceId}`);
-
       // Llamar al servicio de emisión
       const emissionService = strapi.service('api::factus.factus-emission');
       const result = await emissionService.emitInvoice(invoiceId);
@@ -42,7 +40,6 @@ export default {
         };
       }
     } catch (error) {
-      strapi.log.error('❌ Error en emitInvoice controller:', error);
       ctx.status = 500;
       ctx.body = {
         success: false,
@@ -84,8 +81,6 @@ export default {
    */
   async getMunicipalities(ctx) {
     try {
-      strapi.log.info('🏙️ Consultando municipios de Factus...');
-
       // Obtener token de autenticación
       const authService = strapi.service('api::factus.factus-auth');
       const token = await authService.getToken();
@@ -105,8 +100,6 @@ export default {
         return;
       }
 
-      strapi.log.info(`📡 Consultando: ${config.api_url}/v1/municipalities`);
-
       // Consultar municipios de Factus
       const response = await axios.get(
         `${config.api_url}/v1/municipalities`,
@@ -118,8 +111,6 @@ export default {
           timeout: 30000,
         }
       );
-
-      strapi.log.info(`✅ ${response.data?.data?.length || 0} municipios obtenidos`);
 
       // Formatear respuesta para facilitar búsqueda
       const municipalities = response.data?.data || response.data || [];
@@ -163,8 +154,6 @@ export default {
       };
 
     } catch (error: any) {
-      strapi.log.error('❌ Error consultando municipios:', error);
-      
       ctx.status = error.response?.status || 500;
       ctx.body = {
         success: false,
@@ -193,8 +182,6 @@ export default {
         };
         return;
       }
-
-      strapi.log.info(`🔍 Buscando municipio: ${name}`);
 
       // Obtener token
       const authService = strapi.service('api::factus.factus-auth');
@@ -227,8 +214,6 @@ export default {
         return municipalityName.includes(searchTerm);
       });
 
-      strapi.log.info(`✅ ${matches.length} coincidencias encontradas`);
-
       ctx.body = {
         success: true,
         search: name,
@@ -237,12 +222,93 @@ export default {
       };
 
     } catch (error: any) {
-      strapi.log.error('❌ Error buscando municipio:', error);
-      
       ctx.status = error.response?.status || 500;
       ctx.body = {
         success: false,
         error: error.message,
+      };
+    }
+  },
+
+  /**
+   * GET /api/factus/municipalities/autocomplete
+   * Autocompletado de municipios usando el endpoint nativo de Factus
+   * 
+   * Query params:
+   * - name: Nombre parcial del municipio a buscar
+   * 
+   * Usa directamente: GET /v1/municipalities?name={nombre}
+   */
+  async autocompleteMunicipality(ctx) {
+    try {
+      const { name } = ctx.query;
+
+      if (!name || name.length < 2) {
+        ctx.body = {
+          success: true,
+          data: [],
+          total: 0,
+          message: 'Ingrese al menos 2 caracteres para buscar'
+        };
+        return;
+      }
+
+      // Obtener token
+      const authService = strapi.service('api::factus.factus-auth');
+      const token = await authService.getToken();
+
+      // Obtener configuración
+      const configResult = await strapi.entityService.findMany(
+        'api::factus-config.factus-config'
+      );
+      const config = Array.isArray(configResult) ? configResult[0] : configResult;
+
+      if (!config) {
+        ctx.status = 500;
+        ctx.body = {
+          success: false,
+          error: 'Configuración de Factus no encontrada'
+        };
+        return;
+      }
+
+      // Usar el endpoint de Factus con filtro por nombre
+      const url = `${config.api_url}/v1/municipalities?name=${encodeURIComponent(name)}`;
+
+      const response = await axios.get(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        timeout: 15000,
+      });
+
+      // La respuesta de Factus puede venir en data.data o directamente en data
+      const municipalities = response.data?.data || response.data || [];
+
+      // Formatear respuesta para el frontend
+      const formattedMunicipalities = municipalities.map((muni: any) => ({
+        id: muni.id,
+        name: muni.name || muni.nombre,
+        department: muni.department?.name || muni.department || muni.departamento,
+        department_id: muni.department?.id || muni.department_id,
+        // Para mostrar en el dropdown
+        display: `${muni.name || muni.nombre} - ${muni.department?.name || muni.department || muni.departamento || 'Sin departamento'}`
+      }));
+
+      ctx.body = {
+        success: true,
+        data: formattedMunicipalities,
+        total: formattedMunicipalities.length,
+        search: name
+      };
+
+    } catch (error: any) {
+      ctx.status = error.response?.status || 500;
+      ctx.body = {
+        success: false,
+        error: error.message,
+        details: error.response?.data
       };
     }
   },
@@ -256,8 +322,6 @@ export default {
    */
   async generateMapping(ctx) {
     try {
-      strapi.log.info('🗺️ Generando mapeo DANE → Factus...');
-
       // Obtener municipios
       const authService = strapi.service('api::factus.factus-auth');
       const token = await authService.getToken();
@@ -330,7 +394,6 @@ export default {
           typeScriptCode.push(`  '${city.dane}': '${found.id}',  // ${city.name}`);
         } else {
           notFound.push(city.name);
-          strapi.log.warn(`⚠️ No se encontró: ${city.name}`);
         }
       }
 
@@ -363,8 +426,6 @@ export default {
       };
 
     } catch (error: any) {
-      strapi.log.error('❌ Error generando mapeo:', error);
-      
       ctx.status = 500;
       ctx.body = {
         success: false,
@@ -421,9 +482,7 @@ export default {
         return ctx.badRequest('documentId es requerido');
       }
 
-      strapi.log.info(`📥 [DOWNLOAD-PDF] Iniciando descarga para documento: ${documentId}`);
-
-      // ✅ PASO 1: Determinar si es ID de Strapi (número) o factus_id (string con letras)
+      // Determinar si es ID de Strapi (número) o factus_id (string con letras)
       let invoice = null;
       let factusDocumentId = null;
       
@@ -433,16 +492,12 @@ export default {
       try {
         if (isNumericId) {
           // ✅ Es ID de Strapi (105, 106, etc.)
-          strapi.log.info(`🔢 Buscando factura por ID de Strapi: ${documentId}`);
-          
           invoice = await strapi.db.query('api::invoice.invoice').findOne({
             where: { id: parseInt(documentId) },
             select: ['*'],
           });
         } else {
           // ✅ Es factus_id (SETP990000049, etc.)
-          strapi.log.info(`🔤 Buscando factura por factus_id: ${documentId}`);
-          
           invoice = await strapi.db.query('api::invoice.invoice').findOne({
             where: { factus_id: documentId },
             select: ['*'],
@@ -454,55 +509,33 @@ export default {
           }
         }
         
-        if (!invoice) {
-          strapi.log.error(`❌ Factura ${documentId} NO encontrada en DB`);
-        } else {
-          strapi.log.info(`📊 Factura encontrada en DB:`);
-          strapi.log.info(`   - ID Strapi: ${invoice.id}`);
-          strapi.log.info(`   - factus_id: ${invoice?.factus_id || '❌ NO EXISTE'}`);
-          strapi.log.info(`   - estado_local: ${invoice?.estado_local}`);
-          strapi.log.info(`   - estado_dian: ${invoice?.estado_dian || 'N/A'}`);
-          
+        if (invoice) {
           // Si buscamos por ID de Strapi, extraer el factus_id
           if (isNumericId) {
             if (invoice?.factus_id) {
               factusDocumentId = invoice.factus_id;
-              strapi.log.info(`✅ Usando factus_id: ${factusDocumentId}`);
-            } else {
-              strapi.log.warn('⚠️ La factura NO tiene factus_id guardado');
-              
+            } else if (invoice?.respuesta_factus) {
               // ✅ Intentar extraer de respuesta_factus si existe
-              if (invoice?.respuesta_factus) {
-                strapi.log.info('🔍 Intentando extraer de respuesta_factus...');
+              const extracted = this.extractFactusId(invoice.respuesta_factus);
+              
+              if (extracted) {
+                factusDocumentId = extracted;
                 
-                const extracted = this.extractFactusId(invoice.respuesta_factus);
-                
-                if (extracted) {
-                  factusDocumentId = extracted;
-                  strapi.log.info(`✅ ID extraído de respuesta: ${factusDocumentId}`);
-                  
-                  // Guardar para futuras referencias
-                  await strapi.db.query('api::invoice.invoice').update({
-                    where: { id: invoice.id },
-                    data: { factus_id: extracted }
-                  });
-                  strapi.log.info('💾 factus_id guardado en DB para futuras descargas');
-                } else {
-                  strapi.log.error('❌ No se pudo extraer factus_id de respuesta_factus');
-                }
+                // Guardar para futuras referencias
+                await strapi.db.query('api::invoice.invoice').update({
+                  where: { id: invoice.id },
+                  data: { factus_id: extracted }
+                });
               }
             }
           }
         }
       } catch (e) {
-        strapi.log.error('❌ Error buscando factura en DB:', e.message);
-        strapi.log.error('Stack:', e.stack);
+        // Error buscando factura en DB
       }
 
       // ✅ VALIDACIÓN: ¿Tenemos un factus_id válido?
       if (!factusDocumentId) {
-        strapi.log.error('❌ CRÍTICO: No se pudo determinar el factus_id');
-        
         return ctx.badRequest({
           success: false,
           message: 'No se puede descargar el PDF',
@@ -519,14 +552,11 @@ export default {
         });
       }
 
-      // ✅ PASO 2: Descargar el PDF desde Factus
-      strapi.log.info(`📥 Descargando PDF desde Factus con ID: ${factusDocumentId}`);
-      
+      // Descargar el PDF desde Factus
       const emissionService = strapi.service('api::factus.factus-emission');
       const result = await emissionService.downloadPDF(factusDocumentId);
 
       if (!result.success) {
-        strapi.log.error('❌ Error descargando PDF desde Factus:', result.error);
         return ctx.badRequest({
           success: false,
           message: 'Error descargando PDF desde Factus',
@@ -535,14 +565,12 @@ export default {
         });
       }
 
-      // ✅ PASO 3: Procesar y enviar el PDF
+      // Procesar y enviar el PDF
       const pdfData = result.data?.data || result.data;
       const pdfBase64 = pdfData?.pdf_base_64_encoded || pdfData?.pdf_base64;
       const fileName = pdfData?.file_name || `factura-${factusDocumentId}`;
 
       if (pdfBase64) {
-        strapi.log.info('✅ PDF obtenido como base64');
-        
         if (returnBlob === 'true') {
           // Convertir base64 a buffer y enviar como blob
           const pdfBuffer = Buffer.from(pdfBase64, 'base64');
@@ -550,8 +578,6 @@ export default {
           ctx.set('Content-Type', 'application/pdf');
           ctx.set('Content-Disposition', `attachment; filename="${fileName}.pdf"`);
           ctx.body = pdfBuffer;
-          
-          strapi.log.info(`✅ PDF enviado como blob (${pdfBuffer.length} bytes)`);
           return;
         } else {
           // Enviar como JSON con base64
@@ -565,8 +591,6 @@ export default {
         }
       } else if (pdfData?.pdf_url) {
         // Descargar desde URL y enviar
-        strapi.log.info(`📥 Descargando PDF desde URL: ${pdfData.pdf_url}`);
-        
         const pdfResponse = await axios.get(pdfData.pdf_url, {
           responseType: 'arraybuffer',
           timeout: 30000,
@@ -575,11 +599,8 @@ export default {
         ctx.set('Content-Type', 'application/pdf');
         ctx.set('Content-Disposition', `attachment; filename="${fileName}.pdf"`);
         ctx.body = Buffer.from(pdfResponse.data);
-        
-        strapi.log.info('✅ PDF descargado y enviado');
         return;
       } else {
-        strapi.log.error('❌ La respuesta de Factus no contiene PDF');
         return ctx.badRequest({
           success: false,
           message: 'La respuesta de Factus no contiene el PDF',
@@ -588,7 +609,6 @@ export default {
       }
 
     } catch (error) {
-      strapi.log.error('❌ Error en downloadPDF controller:', error);
       return ctx.internalServerError({
         success: false,
         message: 'Error interno del servidor',
@@ -603,8 +623,6 @@ export default {
    */
   extractFactusId(response: any): string | null {
     if (!response) return null;
-    
-    strapi.log.debug('🔍 Analizando respuesta para extraer factus_id...');
     
     // Prioridad 1: Campo "number" (el más usado para descargas)
     if (response.number && typeof response.number === 'string') {
@@ -633,7 +651,6 @@ export default {
       return response.uuid.trim();
     }
     
-    strapi.log.error('❌ No se pudo extraer factus_id de ningún campo conocido');
     return null;
   },
 
@@ -645,62 +662,44 @@ export default {
   extractDocumentId(response: any): string | null {
     if (!response) return null;
     
-    strapi.log.info('🔍 extractDocumentId - Analizando respuesta Factus...');
-    
     // PRIORIDAD 1: Buscar en rutas NESTED (Factus API devuelve: { data: { bill: { number: "SETP..." } } })
     if (response?.data?.bill?.number && typeof response.data.bill.number === 'string') {
-      const id = String(response.data.bill.number).trim();
-      strapi.log.info(`✅ extractDocumentId: Encontrado en 'data.bill.number': ${id}`);
-      return id;
+      return String(response.data.bill.number).trim();
     }
     
     if (response?.data?.bill?.id && (typeof response.data.bill.id === 'string' || typeof response.data.bill.id === 'number')) {
-      const id = String(response.data.bill.id).trim();
-      strapi.log.info(`✅ extractDocumentId: Encontrado en 'data.bill.id': ${id}`);
-      return id;
+      return String(response.data.bill.id).trim();
     }
     
     if (response?.data?.bill?.cufe && typeof response.data.bill.cufe === 'string') {
-      const cufe = String(response.data.bill.cufe).trim();
-      strapi.log.info(`✅ extractDocumentId: Encontrado en 'data.bill.cufe': ${cufe}`);
-      return cufe;
+      return String(response.data.bill.cufe).trim();
     }
     
     // PRIORIDAD 2: Campos de nivel superior
     if (response.number && typeof response.number === 'string') {
-      strapi.log.info(`✅ extractDocumentId: Encontrado en 'number': ${response.number}`);
       return String(response.number).trim();
     }
     
     if (response.id && (typeof response.id === 'string' || typeof response.id === 'number')) {
-      strapi.log.info(`✅ extractDocumentId: Encontrado en 'id': ${response.id}`);
       return String(response.id).trim();
     }
     
     if (response.document_id && typeof response.document_id === 'string') {
-      strapi.log.info(`✅ extractDocumentId: Encontrado en 'document_id': ${response.document_id}`);
       return response.document_id.trim();
     }
     
     if (response.uuid && typeof response.uuid === 'string') {
-      strapi.log.info(`✅ extractDocumentId: Encontrado en 'uuid': ${response.uuid}`);
       return response.uuid.trim();
     }
     
     if (response.cufe && typeof response.cufe === 'string') {
-      const cufe = String(response.cufe).trim();
-      strapi.log.info(`✅ extractDocumentId: Encontrado 'cufe': ${cufe}`);
-      return cufe;
+      return String(response.cufe).trim();
     }
     
     if (response.cude && typeof response.cude === 'string') {
-      const cude = String(response.cude).trim();
-      strapi.log.info(`✅ extractDocumentId: Encontrado 'cude': ${cude}`);
-      return cude;
+      return String(response.cude).trim();
     }
     
-    strapi.log.error('❌ extractDocumentId: No se pudo identificar el ID de documento');
-    strapi.log.debug(`📋 Rutas verificadas: data.bill.number, data.bill.id, data.bill.cufe, number, id, document_id, uuid, cufe, cude`);
     return null;
   },
   // ═══════════════════════════════════════════════════════════
@@ -773,8 +772,6 @@ export default {
    */
   async getFactusRanges(ctx) {
     try {
-      strapi.log.info('📝 Consultando rangos de numeración en Factus API...');
-
       const authService = strapi.service('api::factus.factus-auth');
 
       // Obtener configuración y token
@@ -789,8 +786,6 @@ export default {
       // Obtener token
       const token = await authService.getToken();
 
-      strapi.log.info('🔑 Token obtenido, consultando rangos...');
-
       // Hacer petición a Factus para obtener rangos
       const response = await axios.get(
         `${config.api_url}/v1/numbering-ranges`,
@@ -803,9 +798,6 @@ export default {
         }
       );
 
-      strapi.log.info('✅ Rangos obtenidos de Factus:');
-      strapi.log.info(JSON.stringify(response.data, null, 2));
-
       ctx.status = 200;
       ctx.body = {
         success: true,
@@ -813,7 +805,6 @@ export default {
         data: response.data,
       };
     } catch (error: any) {
-      strapi.log.error('❌ Error consultando rangos:', error);
       ctx.status = error.response?.status || 500;
       ctx.body = {
         success: false,
@@ -893,8 +884,6 @@ export default {
    */
   async syncNumberingRanges(ctx) {
     try {
-      strapi.log.info('🔄 Sincronizando rangos de numeración...');
-
       const numberingService = strapi.service('api::factus.factus-numbering');
       const result = await numberingService.syncWithFactus();
 

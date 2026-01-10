@@ -13,55 +13,11 @@ import type {
   Client, 
   Product
 } from '../types/factus.types';
-
-interface FactusInvoicePayload {
-  numbering_range_id: number;
-  reference_code: string;
-  observation: string;
-  payment_form: string;
-  payment_due_date: string;
-  payment_method_code: string;
-  operation_type: number;
-  send_email: boolean;
-  order_reference: {
-    reference_code: string;
-    issue_date: string;
-  };
-  billing_period: {
-    start_date: string;
-    start_time: string;
-    end_date: string;
-    end_time: string;
-  };
-  establishment: {
-    name: string;
-    address: string;
-    phone_number: string;
-    email: string;
-    municipality_id: string;
-  };
-  customer: {
-    identification: string;
-    dv?: string;
-    company?: string;
-    trade_name?: string;
-    names: string;
-    address: string;
-    email: string;
-    phone: string;
-    legal_organization_id: string;
-    tribute_id: string;
-    identification_document_id: string;
-    municipality_id: string;
-  };
-  items: Array<any>;
-}
+import type { FactusInvoicePayload } from './factus-sender';
 
 export default {
   async mapInvoiceToFactus(invoiceId: number): Promise<FactusInvoicePayload> {
     try {
-      strapi.log.info(`🗺️ [MAPPER] Iniciando mapeo de factura ${invoiceId}...`);
-
       // PASO 1: Obtener factura
       const invoice = await strapi.db.query('api::invoice.invoice').findOne({
         where: { id: invoiceId },
@@ -86,8 +42,6 @@ export default {
       if (!invoice.invoice_items || invoice.invoice_items.length === 0) {
         throw new Error(`❌ La factura ${invoiceId} no tiene items`);
       }
-
-      strapi.log.info('✅ Validación inicial completada');
 
       // PASO 2: Obtener configuración
       const config = await strapi.db.query('api::factus-config.factus-config').findOne({
@@ -114,7 +68,6 @@ export default {
           consecutivo = await numberingService.getNextConsecutive(range.id);
           prefijo = range.prefijo;
         } catch (error) {
-          strapi.log.warn('⚠️ No se pudo obtener rango, usando config');
           numberingRangeId = config.numbering_range_id || 8;
           consecutivo = config.consecutivo_actual || 8;
           prefijo = config.prefijo_factura || 'FV';
@@ -143,8 +96,6 @@ export default {
         invoice.client.ciudad_codigo || '11001'
       );
 
-      strapi.log.info(`📍 Mapeando ciudad: DANE ${invoice.client.ciudad_codigo} → Factus ${municipalityId}`);
-
       // PASO 5: Mapear cliente
       const customer = {
         identification: String(invoice.client.numero_documento),
@@ -160,11 +111,6 @@ export default {
         identification_document_id: this.mapTipoDocumento(invoice.client.tipo_documento),
         municipality_id: municipalityId, // ✅ Usar ID de Factus
       };
-
-      strapi.log.info('✅ Cliente mapeado:');
-      strapi.log.info(`   ├─ Nombre: ${customer.names}`);
-      strapi.log.info(`   ├─ Documento: ${customer.identification_document_id}-${customer.identification}`);
-      strapi.log.info(`   └─ 🏙️  Municipio Factus: ${customer.municipality_id}`);
 
       // PASO 6: Mapear items
       const items = invoice.invoice_items.map((item: any, index: number) => {
@@ -210,7 +156,6 @@ export default {
 
       // Si la fecha es futura, usar hoy
       if (invoiceDate > today) {
-        strapi.log.warn(`⚠️ Fecha de emisión es futura (${this.formatDate(invoiceDate)}), usando fecha actual`);
         invoiceDate = today;
       }
 
@@ -221,17 +166,12 @@ export default {
 
       // Si la fecha de vencimiento es anterior a la de emisión, ajustar
       if (dueDate < invoiceDate) {
-        strapi.log.warn('⚠️ Fecha de vencimiento anterior a emisión, ajustando...');
         dueDate = new Date(invoiceDate);
         dueDate.setDate(dueDate.getDate() + 30); // +30 días
       }
 
       const invoiceDateStr = this.formatDate(invoiceDate);
       const dueDateStr = this.formatDate(dueDate);
-
-      strapi.log.info(`📅 Fechas ajustadas:`);
-      strapi.log.info(`   ├─ Emisión: ${invoiceDateStr}`);
-      strapi.log.info(`   └─ Vencimiento: ${dueDateStr}`);
 
       // PASO 7: Construir payload
       const referenceCode = invoice.numero_factura || `${prefijo}-${consecutivo}`;
@@ -260,12 +200,9 @@ export default {
         items,
       };
 
-      strapi.log.info('✅ Payload construido exitosamente');
-
       return payload;
 
     } catch (error) {
-      strapi.log.error('❌ [MAPPER] Error mapeando factura:', error);
       throw error;
     }
   },
@@ -306,9 +243,6 @@ export default {
     const factusMunicipalityId = municipalityMap[codigoDane];
 
     if (!factusMunicipalityId) {
-      strapi.log.warn(
-        `⚠️ Código DANE ${codigoDane} no encontrado en mapeo, usando Bogotá (149) por defecto`
-      );
       return '149'; // Bogotá por defecto
     }
 

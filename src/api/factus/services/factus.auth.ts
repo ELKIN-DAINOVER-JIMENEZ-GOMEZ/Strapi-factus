@@ -40,8 +40,6 @@ export default {
    */
   async getToken(): Promise<string> {
     try {
-      strapi.log.info('🔋 Buscando configuración de Factus...');
-
       const result = await strapi.entityService.findMany(
         'api::factus-config.factus-config',
         { 
@@ -59,8 +57,6 @@ export default {
         );
       }
 
-      strapi.log.info(`✅ Configuración encontrada (ID: ${config.id})`);
-
       // ═══════════════════════════════════════════════════════════
       // PASO 1: Verificar si hay token válido
       // ═══════════════════════════════════════════════════════════
@@ -72,32 +68,22 @@ export default {
         const tenMinutesFromNow = new Date(now.getTime() + 10 * 60000);
 
         if (expiration > tenMinutesFromNow) {
-          const minutesLeft = Math.floor((expiration.getTime() - now.getTime()) / 60000);
-          strapi.log.info(`✅ Token válido (expira en ${minutesLeft} minutos)`);
           return config.token_acceso;
         } else {
-          const minutesLeft = Math.floor((expiration.getTime() - now.getTime()) / 60000);
-          strapi.log.warn(`⚠️ Token cerca de expirar (${minutesLeft} minutos), renovando...`);
-          
           // Intentar refresh primero
           if (config.refresh_token) {
             try {
-              strapi.log.info('🔄 Intentando refresh token...');
               return await this.refreshToken();
             } catch (refreshError) {
-              strapi.log.warn('⚠️ Refresh falló, solicitando token nuevo:', (refreshError as Error).message);
               // Continuar para solicitar token nuevo
             }
           }
         }
-      } else {
-        strapi.log.info('📄 No hay token guardado, solicitando uno nuevo...');
       }
 
       // ═══════════════════════════════════════════════════════════
       // PASO 2: Solicitar nuevo token a Factus
       // ═══════════════════════════════════════════════════════════
-      strapi.log.info('🔐 Conectando con Factus API...');
 
       // 🔄 CAMBIO: Validar que existan las variables de entorno
       if (!process.env.FACTUS_CLIENT_ID || !process.env.FACTUS_CLIENT_SECRET) {
@@ -112,13 +98,6 @@ export default {
         client_secret: process.env.FACTUS_CLIENT_SECRET,
         username: config.api_username || process.env.FACTUS_USERNAME,
         password: config.api_password || process.env.FACTUS_PASSWORD,
-      });
-
-      strapi.log.debug('📤 Enviando petición OAuth a Factus...', {
-        url: `${config.api_url}/oauth/token`,
-        grant_type: 'password',
-        client_id: process.env.FACTUS_CLIENT_ID?.substring(0, 10) + '...',
-        username: config.api_username,
       });
 
       const response = await axios.post<FactusTokenResponse>(
@@ -140,20 +119,11 @@ export default {
         throw new Error('❌ Respuesta inválida: no se recibió access_token');
       }
 
-      strapi.log.info('✅ Token recibido de Factus');
-      strapi.log.debug('Token details:', {
-        token_type: response.data.token_type,
-        expires_in: response.data.expires_in,
-        has_refresh_token: !!response.data.refresh_token,
-      });
-
       // ═══════════════════════════════════════════════════════════
       // PASO 4: Calcular fecha de expiración
       // ═══════════════════════════════════════════════════════════
       const expiresIn = response.data.expires_in || 3600;
       const expirationDate = new Date(Date.now() + expiresIn * 1000);
-
-      strapi.log.info(`⏰ Token expira en: ${expiresIn}s (${expirationDate.toISOString()})`);
 
       // ═══════════════════════════════════════════════════════════
       // PASO 5: Guardar token en la base de datos
@@ -169,8 +139,6 @@ export default {
           },
         }
       );
-
-      strapi.log.info('💾 Token guardado en base de datos');
 
       return response.data.access_token;
 
@@ -190,8 +158,6 @@ export default {
    */
   async refreshToken(): Promise<string> {
     try {
-      strapi.log.info('🔄 Intentando renovar token con refresh_token...');
-
       // Buscar configuración
       const result = await strapi.entityService.findMany(
         'api::factus-config.factus-config',
@@ -210,12 +176,6 @@ export default {
         refresh_token: config.refresh_token,
         client_id: process.env.FACTUS_CLIENT_ID,
         client_secret: process.env.FACTUS_CLIENT_SECRET,
-      });
-
-      strapi.log.debug('📤 Enviando refresh token request...', {
-        url: `${config.api_url}/oauth/token`,
-        grant_type: 'refresh_token',
-        has_refresh_token: true,
       });
 
       const response = await axios.post<FactusTokenResponse>(
@@ -253,17 +213,10 @@ export default {
         }
       );
 
-      strapi.log.info('✅ Token renovado exitosamente');
-      strapi.log.debug('New token details:', {
-        expires_in: expiresIn,
-        has_new_refresh_token: !!response.data.refresh_token,
-      });
-
       return response.data.access_token;
 
     } catch (error) {
-      strapi.log.error('❌ Error renovando token:', (error as Error).message);
-      throw error; // No hacer fallback aquí, dejar que getToken() lo maneje
+      throw error;
     }
   },
 
@@ -272,8 +225,6 @@ export default {
    */
   async testConnection(): Promise<FactusOperationResult<{ token_preview: string }>> {
     try {
-      strapi.log.info('🧪 Probando conexión con Factus...');
-      
       const token = await this.getToken();
 
       return {
@@ -354,8 +305,6 @@ export default {
    */
   async invalidateToken(): Promise<void> {
     try {
-      strapi.log.info('🔥 Invalidando token actual...');
-
       const result = await strapi.entityService.findMany(
         'api::factus-config.factus-config'
       );
@@ -377,10 +326,7 @@ export default {
           },
         }
       );
-
-      strapi.log.info('✅ Token invalidado');
     } catch (error) {
-      strapi.log.error('❌ Error invalidando token:', error);
       throw error;
     }
   },
@@ -393,14 +339,6 @@ export default {
 
     if (axiosError.response) {
       const errorData: any = axiosError.response.data;
-      
-      strapi.log.error('❌ Error de Factus API:', {
-        status: axiosError.response.status,
-        statusText: axiosError.response.statusText,
-        error: errorData.error,
-        error_description: errorData.error_description,
-        message: errorData.message,
-      });
 
       if (axiosError.response.status === 401) {
         throw new Error(
@@ -425,18 +363,12 @@ export default {
         );
       }
     } else if (axiosError.request) {
-      strapi.log.error('❌ No hay respuesta de Factus:', {
-        message: axiosError.message,
-        code: axiosError.code,
-      });
-
       throw new Error(
         '🌐 No se pudo conectar con Factus API. ' +
         'Verifica tu conexión a internet y que la URL sea correcta: ' +
         process.env.FACTUS_API_URL
       );
     } else {
-      strapi.log.error('❌ Error en configuración:', axiosError.message);
       throw error;
     }
   },

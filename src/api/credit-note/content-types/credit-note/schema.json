@@ -1,21 +1,20 @@
 {
   "kind": "collectionType",
-  "collectionName": "invoices",
+  "collectionName": "credit_notes",
   "info": {
-    "singularName": "invoice",
-    "pluralName": "invoices",
-    "displayName": "Invoice",
-    "description": "Facturas electrónicas"
+    "singularName": "credit-note",
+    "pluralName": "credit-notes",
+    "displayName": "Credit Note",
+    "description": "Notas Crédito electrónicas"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
-    "numero_factura": {
+    "numero_nota": {
       "type": "string",
-      "maxLength": 50,
-      "unique": true
+      "maxLength": 50
     },
     "prefijo": {
       "type": "string",
@@ -28,34 +27,17 @@
       "type": "datetime",
       "required": true
     },
-    "fecha_vencimiento": {
-      "type": "date",
-      "required": false
-    },
-    "tipo_operacion": {
-      "type": "enumeration",
-      "required": true,
-      "default": "Contado",
-      "enum": [
-        "Venta",
-        "Credito",
-        "Contado",
-        "Exportacion"
-      ]
-    },
-    "forma_pago": {
-      "type": "enumeration",
-      "enum": [
-        "Efectivo",
-        "Credito",
-        "Tarjeta",
-        "Transferencia",
-        "Cheque"
-      ]
-    },
-    "medio_pago": {
+    "motivo_correccion": {
       "type": "string",
-      "maxLength": 50
+      "required": true
+    },
+    "concepto_correccion_id": {
+      "type": "integer",
+      "required": true,
+      "default": 5
+    },
+    "descripcion_correccion": {
+      "type": "text"
     },
     "subtotal": {
       "type": "decimal",
@@ -69,7 +51,6 @@
     },
     "total_descuentos": {
       "type": "decimal",
-      "required": true,
       "default": 0
     },
     "total": {
@@ -87,7 +68,8 @@
         "Enviada",
         "Aceptada",
         "Rechazada",
-        "Anulada"
+        "Anulada",
+        "Error"
       ]
     },
     "estado_dian": {
@@ -98,16 +80,15 @@
       "type": "string"
     },
     "factus_bill_id": {
-      "type": "integer",
-      "description": "ID numérico interno de Factus para referencia en notas crédito"
+      "type": "integer"
     },
-    "factus_cude": {
+    "public_url": {
       "type": "string"
     },
-    "factus_qr": {
+    "cude": {
       "type": "string"
     },
-    "factus_qr_image": {
+    "qr_code": {
       "type": "text"
     },
     "url_pdf": {
@@ -116,13 +97,10 @@
     "url_xml": {
       "type": "string"
     },
-    "url_publica": {
-      "type": "string"
-    },
     "respuesta_factus": {
       "type": "json"
     },
-    "errores_factus": {
+    "errores_validacion": {
       "type": "json"
     },
     "fecha_envio_dian": {
@@ -139,38 +117,21 @@
       "type": "boolean",
       "default": false
     },
-    "orden_compra_referencia": {
-      "type": "string",
-      "maxLength": 100
-    },
-    "orden_compra_fecha": {
-      "type": "date"
-    },
-    "periodo_facturacion_inicio": {
-      "type": "datetime"
-    },
-    "periodo_facturacion_fin": {
-      "type": "datetime"
-    },
-    "es_instrumento_negociable": {
-      "type": "boolean",
-      "default": false
-    },
-    "tiene_reclamo": {
-      "type": "boolean",
-      "default": false
-    },
     "client": {
       "type": "relation",
       "relation": "manyToOne",
-      "target": "api::client.client",
-      "inversedBy": "invoices"
+      "target": "api::client.client"
     },
-    "invoice_items": {
+    "invoice": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::invoice.invoice"
+    },
+    "credit_note_items": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::invoice-item.invoice-item",
-      "mappedBy": "invoice"
+      "target": "api::credit-note-item.credit-note-item",
+      "mappedBy": "credit_note"
     },
     "numering_range": {
       "type": "relation",

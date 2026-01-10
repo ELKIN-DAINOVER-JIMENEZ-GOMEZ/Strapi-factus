@@ -22,7 +22,7 @@ export default {
    */
   async emitInvoice(ctx: Context) {
     try {
-      // ✅ PASO 1: Validar que venga el invoiceId
+      // Validar que venga el invoiceId
       const { invoiceId } = ctx.request.body as { invoiceId?: number };
 
       if (!invoiceId) {
@@ -30,9 +30,7 @@ export default {
         return;
       }
 
-      strapi.log.info(`🚀 [API] Solicitud de emisión para factura ${invoiceId}`);
-
-      // ✅ PASO 2: Verificar que la factura exista
+      // Verificar que la factura exista
       const invoice = await strapi.entityService.findOne(
         'api::invoice.invoice',
         invoiceId,
@@ -44,7 +42,7 @@ export default {
         return;
       }
 
-      // ✅ PASO 3: Validar estado
+      // Validar estado
       const invoiceData = invoice as any;
       
       if (invoiceData.estado_local && invoiceData.estado_local !== 'Borrador') {
@@ -55,11 +53,11 @@ export default {
         return;
       }
 
-      // ✅ PASO 4: Llamar al servicio de emisión
+      // Llamar al servicio de emisión
       const emissionService = strapi.service('api::factus.factus-emission');
       const result = await emissionService.emitInvoice(invoiceId);
 
-      // ✅ PASO 5: Retornar respuesta
+      // Retornar respuesta
       if (result.success) {
         ctx.send({
           success: true,
@@ -79,8 +77,6 @@ export default {
         );
       }
     } catch (error) {
-      strapi.log.error('❌ [API] Error en emisión:', error);
-      
       ctx.send(
         {
           success: false,
@@ -107,8 +103,6 @@ export default {
         return;
       }
 
-      strapi.log.info(`🔍 [API] Consultando estado de documento ${documentId}`);
-
       const emissionService = strapi.service('api::factus.factus-emission');
       const result = await emissionService.getInvoiceStatus(documentId);
 
@@ -127,7 +121,6 @@ export default {
         );
       }
     } catch (error) {
-      strapi.log.error('❌ [API] Error consultando estado:', error);
       ctx.internalServerError('Error consultando estado de factura');
     }
   },
@@ -164,7 +157,6 @@ export default {
         );
       }
     } catch (error) {
-      strapi.log.error('❌ [API] Error descargando PDF:', error);
       ctx.internalServerError('Error descargando PDF');
     }
   },
@@ -200,7 +192,6 @@ export default {
         );
       }
     } catch (error) {
-      strapi.log.error('❌ [API] Error listando facturas:', error);
       ctx.internalServerError('Error listando facturas');
     }
   },

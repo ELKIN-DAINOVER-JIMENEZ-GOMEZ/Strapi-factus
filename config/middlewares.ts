@@ -24,7 +24,6 @@ export default [
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
     },
   },
-  'strapi::cors',
   'strapi::poweredBy',
   'strapi::query',
   'strapi::body',

@@ -1,9 +1,4 @@
-/**
- * Servicio de Emisión de Facturas - VERSIÓN CORREGIDA
- * Ubicación: src/api/factus/services/factus-emission.ts
- * 
- * ✅ FIX: Retornar document_id de Factus para descarga de PDF
- */
+
 
 import type {FactusConfig, FactusOperationResult } from '../types/factus.types';
 
@@ -39,7 +34,7 @@ function extractFactusId(response: any): string | null {
 }
 
 interface FactusEmissionResponse {
-  number?: string;           // ← IMPORTANTE: Número de factura para descargas
+  number?: string;           //Número de factura para descargas
   id?: number;
   document_id?: string;
   uuid?: string;
@@ -64,7 +59,7 @@ interface FactusEmissionResponse {
       qr?: string;
       pdf_url?: string;
       xml_url?: string;
-      public_url?: string;  // ← URL pública única para cada factura
+      public_url?: string;  // URL pública única para cada factura
     };
   };
 }
@@ -79,7 +74,7 @@ export default {
       if (!validation.valid) {
         return {
           success: false,
-          message: '❌ Factura inválida',
+          message: ' Factura inválida',
           error: validation.errors.join(', '),
           timestamp: new Date().toISOString(),
         };
@@ -101,7 +96,7 @@ export default {
       if (!invoice.client) {
         return {
           success: false,
-          message: '❌ Factura sin cliente',
+          message: ' Factura sin cliente',
           error: 'La factura no tiene cliente asociado',
           timestamp: new Date().toISOString(),
         };
@@ -151,7 +146,7 @@ export default {
       });
 
       if (!sendResult.success) {
-        // ✅ Manejo especial para error 409 - Factura pendiente
+        // Manejo especial para error 409 - Factura pendiente
         const is409Conflict = sendResult.statusCode === 409;
         const isPendingInvoice = sendResult.error?.includes('factura pendiente') || 
                                  sendResult.data?.message?.includes('factura pendiente');
@@ -244,14 +239,14 @@ export default {
       updateData.estado_local = 'Enviada';
       updateData.estado_dian = factusResponse.status || 'Enviado';
       
-      // 🔑 EXTRACCIÓN DEL factus_id usando función compartida
+      // EXTRACCIÓN DEL factus_id usando función compartida
       const factusDocumentId = extractFactusId(factusResponse);
       const factusBillId = factusResponse?.data?.bill?.id 
         ? Number(factusResponse.data.bill.id) 
         : undefined;
 
       if (factusDocumentId || factusBillId) {
-        // ✅ IMPORTANTE: Guardar el bill.id único de Factus (factusBillId)
+        // IMPORTANTE: Guardar el bill.id único de Factus (factusBillId)
         // Este ID es único para cada factura incluso en sandbox
         updateData.factus_id = factusDocumentId;
         updateData.factus_bill_id = factusBillId; // ID único de Factus
@@ -269,7 +264,7 @@ export default {
                             factusResponse?.xml_url;
         updateData.errores_factus = null;
       } else {
-        // ❌ NO SE PUDO EXTRAER EL ID
+        //  NO SE PUDO EXTRAER EL ID
         // Marcar como rechazada si no se puede obtener el ID
         updateData.factus_id = null;
         updateData.estado_local = 'Rechazada';
@@ -305,14 +300,14 @@ export default {
 
       return {
         success: true,
-        message: '✅ Estado obtenido',
+        message: ' Estado obtenido',
         data: result.data,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       return {
         success: false,
-        message: '❌ Error consultando estado',
+        message: ' Error consultando estado',
         error: (error as Error).message,
         timestamp: new Date().toISOString(),
       };
@@ -335,14 +330,14 @@ export default {
 
       return {
         success: true,
-        message: '✅ PDF obtenido',
+        message: 'PDF obtenido',
         data: result.data, // Devuelve el objeto completo con file_name, pdf_base_64_encoded, etc.
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       return {
         success: false,
-        message: '❌ Error descargando PDF',
+        message: ' Error descargando PDF',
         error: (error as Error).message,
         timestamp: new Date().toISOString(),
       };
@@ -364,14 +359,14 @@ export default {
 
       return {
         success: true,
-        message: '✅ Facturas obtenidas',
+        message: ' Facturas obtenidas',
         data: result.data,
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
       return {
         success: false,
-        message: '❌ Error listando facturas',
+        message: ' Error listando facturas',
         error: (error as Error).message,
         timestamp: new Date().toISOString(),
       };

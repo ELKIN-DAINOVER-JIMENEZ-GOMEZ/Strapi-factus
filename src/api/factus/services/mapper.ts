@@ -1,10 +1,3 @@
-/**
- * Servicio de Mapeo para Factus API - VERSIÓN CORREGIDA FINAL
- * Ubicación: src/api/factus/services/factus-mapper.ts
- * 
- * ✅ FIX 1: Fechas no pueden ser futuras
- * ✅ FIX 2: municipality_id usa IDs de Factus, no códigos DANE
- */
 
 import type { 
   FactusConfig, 
@@ -13,12 +6,12 @@ import type {
   Client, 
   Product
 } from '../types/factus.types';
-import type { FactusInvoicePayload } from './factus-sender';
+import type { FactusInvoicePayload } from './sender';
 
 export default {
   async mapInvoiceToFactus(invoiceId: number): Promise<FactusInvoicePayload> {
     try {
-      // PASO 1: Obtener factura
+      //  Obtener factura
       const invoice = await strapi.db.query('api::invoice.invoice').findOne({
         where: { id: invoiceId },
         populate: {
@@ -32,15 +25,15 @@ export default {
       }) as any;
 
       if (!invoice) {
-        throw new Error(`❌ Factura ${invoiceId} no encontrada`);
+        throw new Error(` Factura ${invoiceId} no encontrada`);
       }
 
       if (!invoice.client) {
-        throw new Error(`❌ La factura ${invoiceId} no tiene cliente asociado`);
+        throw new Error(` La factura ${invoiceId} no tiene cliente asociado`);
       }
 
       if (!invoice.invoice_items || invoice.invoice_items.length === 0) {
-        throw new Error(`❌ La factura ${invoiceId} no tiene items`);
+        throw new Error(` La factura ${invoiceId} no tiene items`);
       }
 
       // PASO 2: Obtener configuración
@@ -49,7 +42,7 @@ export default {
       }) as any as FactusConfig;
 
       if (!config) {
-        throw new Error('❌ Configuración de Factus no encontrada');
+        throw new Error(' Configuración de Factus no encontrada');
       }
 
       // PASO 3: Obtener rango de numeración
@@ -87,16 +80,14 @@ export default {
         municipality_id: '980', // Bogotá en Factus
       };
 
-      // ═══════════════════════════════════════════════════════════
-      // ✅ FIX 2: MAPEAR municipality_id A IDs DE FACTUS
-      // ═══════════════════════════════════════════════════════════
-      
+      // MAPEAR municipality_id A IDs DE FACTUS
+    
       // Obtener ID de municipio de Factus (no código DANE)
       const municipalityId = this.getMunicipalityIdForFactus(
         invoice.client.ciudad_codigo || '11001'
       );
 
-      // PASO 5: Mapear cliente
+      //  Mapear cliente
       const customer = {
         identification: String(invoice.client.numero_documento),
         dv: invoice.client.digito_verificacion || '',
@@ -109,10 +100,10 @@ export default {
         legal_organization_id: this.mapTipoPersona(invoice.client.tipo_persona),
         tribute_id: this.mapRegimenFiscal(invoice.client.regimen_fiscal),
         identification_document_id: this.mapTipoDocumento(invoice.client.tipo_documento),
-        municipality_id: municipalityId, // ✅ Usar ID de Factus
+        municipality_id: municipalityId, // Usar ID de Factus
       };
 
-      // PASO 6: Mapear items
+      //  Mapear items
       const items = invoice.invoice_items.map((item: any, index: number) => {
         const product = item.product;
         const unitMeasureId = this.mapUnidadMedida(product.unidad_medida || 'UND');
@@ -144,9 +135,9 @@ export default {
         return mappedItem;
       });
 
-      // ═══════════════════════════════════════════════════════════
-      // ✅ FIX 1: VALIDAR Y AJUSTAR FECHAS
-      // ═══════════════════════════════════════════════════════════
+    
+      //  VALIDAR Y AJUSTAR FECHAS
+     
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -173,7 +164,7 @@ export default {
       const invoiceDateStr = this.formatDate(invoiceDate);
       const dueDateStr = this.formatDate(dueDate);
 
-      // PASO 7: Construir payload
+      //  Construir payload
       const referenceCode = invoice.numero_factura || `${prefijo}-${consecutivo}`;
 
       const payload: FactusInvoicePayload = {
@@ -187,10 +178,10 @@ export default {
         send_email: false,
         order_reference: {
           reference_code: referenceCode,
-          issue_date: invoiceDateStr, // ✅ Usar fecha validada
+          issue_date: invoiceDateStr, //  Usar fecha validada
         },
         billing_period: {
-          start_date: invoiceDateStr, // ✅ Usar fecha validada
+          start_date: invoiceDateStr, //  Usar fecha validada
           start_time: '00:00:00',
           end_date: dueDateStr,
           end_time: '23:59:59',
@@ -206,21 +197,11 @@ export default {
       throw error;
     }
   },
-
-  // ═══════════════════════════════════════════════════════════
-  // ✅ NUEVO: Mapear código DANE a ID de municipio de Factus
-  // ═══════════════════════════════════════════════════════════
+ 
+  // Mapear código DANE a ID de municipio de Factus
   
   getMunicipalityIdForFactus(codigoDane: string): string {
-    /**
-     * Mapeo de códigos DANE a IDs internos de Factus
-     * 
-     * IMPORTANTE: Estos IDs son internos de Factus, NO son códigos DANE.
-     * Debes consultar la documentación de Factus o hacer una petición GET
-     * a su endpoint de municipios para obtener los IDs correctos.
-     * 
-     * Endpoint: GET /v1/municipalities
-     */
+   
     
     const municipalityMap: Record<string, string> = {
       // Principales ciudades (VERIFICAR CON FACTUS API)
@@ -249,9 +230,9 @@ export default {
     return factusMunicipalityId;
   },
 
-  // ═══════════════════════════════════════════════════════════
+  
   // MÉTODOS DE MAPEO (sin cambios)
-  // ═══════════════════════════════════════════════════════════
+  
 
   mapTipoDocumento(tipo: string): string {
     const map: Record<string, string> = {
@@ -354,16 +335,16 @@ export default {
       }) as any;
 
       if (!invoice) {
-        errors.push('❌ Factura no encontrada');
+        errors.push(' Factura no encontrada');
         return { valid: false, errors };
       }
 
       if (!invoice.client) {
-        errors.push('❌ La factura debe tener un cliente asociado');
+        errors.push(' La factura debe tener un cliente asociado');
       }
 
       if (!invoice.invoice_items || invoice.invoice_items.length === 0) {
-        errors.push('❌ La factura debe tener al menos un ítem');
+        errors.push(' La factura debe tener al menos un ítem');
       }
 
       // Validar fecha no es futura
@@ -373,7 +354,7 @@ export default {
       invoiceDate.setHours(0, 0, 0, 0);
 
       if (invoiceDate > today) {
-        errors.push(`⚠️ La fecha de emisión (${this.formatDate(invoiceDate)}) es futura. Se ajustará a la fecha actual.`);
+        errors.push(` La fecha de emisión (${this.formatDate(invoiceDate)}) es futura. Se ajustará a la fecha actual.`);
       }
 
       return {
@@ -381,7 +362,7 @@ export default {
         errors,
       };
     } catch (error) {
-      errors.push(`❌ Error validando: ${(error as Error).message}`);
+      errors.push(` Error validando: ${(error as Error).message}`);
       return { valid: false, errors };
     }
   },

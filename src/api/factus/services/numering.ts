@@ -1,7 +1,4 @@
 /**
- * Servicio de Gestión de Rangos de Numeración
- * Ubicación: src/api/factus/services/factus-numbering.ts
- * 
  * Responsabilidades:
  * - Gestionar rangos de numeración DIAN
  * - Asignar consecutivos automáticamente

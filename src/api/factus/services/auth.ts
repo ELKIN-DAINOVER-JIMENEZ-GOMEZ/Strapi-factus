@@ -1,22 +1,3 @@
-/**
- * Servicio de Autenticación con Factus API
- * Ubicación: src/api/factus/services/factus-auth.ts
- * 
- * Responsabilidades:
- * - Obtener token OAuth2 de Factus
- * - Renovar token usando refresh_token
- * - Cachear tokens en la base de datos
- * - Manejar expiración automática
- */
-/**
- * Servicio de Autenticación con Factus API - MEJORADO
- * Ubicación: src/api/factus/services/factus-auth.ts
- * 
- * Cambios principales:
- * 1. Manejo correcto del refresh token según documentación Factus
- * 2. Mejor gestión de errores
- * 3. Logging más detallado
- */
 
 import axios, { AxiosError } from 'axios';
 import qs from 'qs';
@@ -27,17 +8,7 @@ import type {
 } from '../types/factus.types';
 
 export default {
-  /**
-   * 🔑 Obtener token de acceso de Factus
-   * 
-   * Flujo mejorado:
-   * 1. Buscar configuración en DB
-   * 2. Verificar si hay token válido en caché
-   * 3. Si el token está por expirar (<10 min), intentar refresh
-   * 4. Si refresh falla o no hay refresh_token, solicitar token nuevo
-   * 5. Guardar nuevo token en DB
-   * 6. Retornar token
-   */
+
   async getToken(): Promise<string> {
     try {
       const result = await strapi.entityService.findMany(
@@ -52,19 +23,17 @@ export default {
 
       if (!config) {
         throw new Error(
-          '❌ Configuración de Factus no encontrada. ' +
+          ' Configuración de Factus no encontrada. ' +
           'Ve a Content Manager → Factus Config y crea un registro.'
         );
       }
 
-      // ═══════════════════════════════════════════════════════════
-      // PASO 1: Verificar si hay token válido
-      // ═══════════════════════════════════════════════════════════
+     
       if (config.token_acceso && config.token_expiracion) {
         const now = new Date();
         const expiration = new Date(config.token_expiracion);
         
-        // 🔄 CAMBIO IMPORTANTE: Renovar si expira en menos de 10 minutos
+        //  CAMBIO IMPORTANTE: Renovar si expira en menos de 10 minutos
         const tenMinutesFromNow = new Date(now.getTime() + 10 * 60000);
 
         if (expiration > tenMinutesFromNow) {
@@ -85,10 +54,10 @@ export default {
       // PASO 2: Solicitar nuevo token a Factus
       // ═══════════════════════════════════════════════════════════
 
-      // 🔄 CAMBIO: Validar que existan las variables de entorno
+      //  CAMBIO: Validar que existan las variables de entorno
       if (!process.env.FACTUS_CLIENT_ID || !process.env.FACTUS_CLIENT_SECRET) {
         throw new Error(
-          '❌ Faltan variables de entorno: FACTUS_CLIENT_ID y FACTUS_CLIENT_SECRET'
+          ' Faltan variables de entorno: FACTUS_CLIENT_ID y FACTUS_CLIENT_SECRET'
         );
       }
 
@@ -112,22 +81,20 @@ export default {
         }
       );
 
-      // ═══════════════════════════════════════════════════════════
+
       // PASO 3: Validar respuesta
-      // ═══════════════════════════════════════════════════════════
+   
       if (!response.data || !response.data.access_token) {
         throw new Error('❌ Respuesta inválida: no se recibió access_token');
       }
-
-      // ═══════════════════════════════════════════════════════════
+ 
       // PASO 4: Calcular fecha de expiración
-      // ═══════════════════════════════════════════════════════════
+ 
       const expiresIn = response.data.expires_in || 3600;
       const expirationDate = new Date(Date.now() + expiresIn * 1000);
-
-      // ═══════════════════════════════════════════════════════════
+     
       // PASO 5: Guardar token en la base de datos
-      // ═══════════════════════════════════════════════════════════
+      
       await strapi.entityService.update(
         'api::factus-config.factus-config',
         config.id,
@@ -147,15 +114,7 @@ export default {
     }
   },
 
-  /**
-   * 🔄 Renovar token usando refresh_token
-   * 
-   * Según documentación de Factus, el refresh_token:
-   * - Se envía con grant_type: 'refresh_token'
-   * - Requiere client_id y client_secret
-   * - Retorna un nuevo access_token Y un nuevo refresh_token
-   * - Es más rápido que solicitar un token completamente nuevo
-   */
+ 
   async refreshToken(): Promise<string> {
     try {
       // Buscar configuración
@@ -198,7 +157,7 @@ export default {
       const expiresIn = response.data.expires_in || 3600;
       const expirationDate = new Date(Date.now() + expiresIn * 1000);
 
-      // 🔄 CAMBIO IMPORTANTE: Factus devuelve un NUEVO refresh_token
+    // Factus devuelve un NUEVO refresh_token
       // Hay que actualizar ambos tokens
       await strapi.entityService.update(
         'api::factus-config.factus-config',
@@ -207,7 +166,7 @@ export default {
           data: {
             token_acceso: response.data.access_token,
             token_expiracion: expirationDate,
-            // ⚠️ IMPORTANTE: Actualizar también el refresh_token
+            //  Actualizar también el refresh_token
             refresh_token: response.data.refresh_token || config.refresh_token,
           },
         }
@@ -220,16 +179,16 @@ export default {
     }
   },
 
-  /**
-   * 🧪 Verificar conexión con Factus
-   */
+  
+    //Verificar conexión con Factus
+   
   async testConnection(): Promise<FactusOperationResult<{ token_preview: string }>> {
     try {
       const token = await this.getToken();
 
       return {
         success: true,
-        message: '✅ Conexión exitosa con Factus API',
+        message: ' Conexión exitosa con Factus API',
         data: {
           token_preview: token.substring(0, 30) + '...',
         },
@@ -245,9 +204,9 @@ export default {
     }
   },
 
-  /**
-   * 📊 Obtener información del token actual
-   */
+  
+   // Obtener información del token actual
+   
   async getTokenInfo(): Promise<{
     has_token: boolean;
     is_expired: boolean;
@@ -278,7 +237,7 @@ export default {
         ? Math.floor((expiration.getTime() - now.getTime()) / 60000) 
         : 0;
 
-      // 🔄 NUEVO: Indicar si se debe refrescar (menos de 10 minutos)
+      //  Indicar si se debe refrescar (menos de 10 minutos)
       const shouldRefresh = minutesUntilExpiry > 0 && minutesUntilExpiry < 10;
 
       return {
@@ -296,7 +255,7 @@ export default {
   },
 
   /**
-   * 🔥 Invalidar token actual (forzar renovación)
+   *  Invalidar token actual (forzar renovación)
    * 
    * Útil para:
    * - Testing
@@ -331,9 +290,8 @@ export default {
     }
   },
 
-  /**
-   * 🛠️ Manejo centralizado de errores de autenticación
-   */
+    // Manejo centralizado de errores de autenticación
+   
   handleAuthError(error: unknown): never {
     const axiosError = error as AxiosError;
 
@@ -342,20 +300,20 @@ export default {
 
       if (axiosError.response.status === 401) {
         throw new Error(
-          '🔐 Error de autenticación con Factus: ' +
+          ' Error de autenticación con Factus: ' +
           'Verifica tus credenciales (client_id, client_secret, username, password)'
         );
       } else if (axiosError.response.status === 400) {
         throw new Error(
-          `⚠️ Petición inválida a Factus: ${errorData.error_description || errorData.message}`
+          ` Petición inválida a Factus: ${errorData.error_description || errorData.message}`
         );
       } else if (axiosError.response.status >= 500) {
         throw new Error(
-          '🔥 Error del servidor de Factus. Intenta nuevamente en unos minutos.'
+          ' Error del servidor de Factus. Intenta nuevamente en unos minutos.'
         );
       } else {
         throw new Error(
-          `❌ Error ${axiosError.response.status}: ${
+          ` Error ${axiosError.response.status}: ${
             errorData.error_description || 
             errorData.message || 
             'Error desconocido'
@@ -364,7 +322,7 @@ export default {
       }
     } else if (axiosError.request) {
       throw new Error(
-        '🌐 No se pudo conectar con Factus API. ' +
+        ' No se pudo conectar con Factus API. ' +
         'Verifica tu conexión a internet y que la URL sea correcta: ' +
         process.env.FACTUS_API_URL
       );

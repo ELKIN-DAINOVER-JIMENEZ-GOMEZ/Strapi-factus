@@ -1,7 +1,3 @@
-/**
- * Servicio de Envío a Factus API
- * Ubicación: src/api/factus/services/factus-sender.ts
- */
 
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import type { FactusConfig } from '../types/factus.types';

@@ -21,7 +21,7 @@ export default {
       }
 
       // Llamar al servicio de emisión
-      const emissionService = strapi.service('api::factus.factus-emission');
+      const emissionService = strapi.service('api::factus.emission');
       const result = await emissionService.emitInvoice(invoiceId);
 
       if (result.success) {
@@ -55,7 +55,7 @@ export default {
    */
   async testConnection(ctx) {
     try {
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const result = await authService.testConnection();
 
       ctx.status = result.success ? 200 : 500;
@@ -82,14 +82,11 @@ export default {
   async getMunicipalities(ctx) {
     try {
       // Obtener token de autenticación
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const token = await authService.getToken();
 
       // Obtener configuración
-      const configResult = await strapi.entityService.findMany(
-        'api::factus-config.factus-config'
-      );
-      const config = Array.isArray(configResult) ? configResult[0] : configResult;
+      const config = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} });
 
       if (!config) {
         ctx.status = 500;
@@ -184,14 +181,11 @@ export default {
       }
 
       // Obtener token
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const token = await authService.getToken();
 
       // Obtener configuración
-      const configResult = await strapi.entityService.findMany(
-        'api::factus-config.factus-config'
-      );
-      const config = Array.isArray(configResult) ? configResult[0] : configResult;
+      const config = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} });
 
       // Consultar todos los municipios
       const response = await axios.get(
@@ -254,14 +248,11 @@ export default {
       }
 
       // Obtener token
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const token = await authService.getToken();
 
       // Obtener configuración
-      const configResult = await strapi.entityService.findMany(
-        'api::factus-config.factus-config'
-      );
-      const config = Array.isArray(configResult) ? configResult[0] : configResult;
+      const config = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} });
 
       if (!config) {
         ctx.status = 500;
@@ -323,13 +314,10 @@ export default {
   async generateMapping(ctx) {
     try {
       // Obtener municipios
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const token = await authService.getToken();
 
-      const configResult = await strapi.entityService.findMany(
-        'api::factus-config.factus-config'
-      );
-      const config = Array.isArray(configResult) ? configResult[0] : configResult;
+      const config = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} });
 
       const response = await axios.get(
         `${config.api_url}/v1/municipalities`,
@@ -450,7 +438,7 @@ export default {
         return ctx.badRequest('documentId es requerido');
       }
 
-      const emissionService = strapi.service('api::factus.factus-emission');
+      const emissionService = strapi.service('api::factus.emission');
       const result = await emissionService.getInvoiceStatus(documentId);
 
       ctx.status = result.success ? 200 : 400;
@@ -553,7 +541,7 @@ export default {
       }
 
       // Descargar el PDF desde Factus
-      const emissionService = strapi.service('api::factus.factus-emission');
+      const emissionService = strapi.service('api::factus.emission');
       const result = await emissionService.downloadPDF(factusDocumentId);
 
       if (!result.success) {
@@ -718,7 +706,7 @@ export default {
     try {
       const { tipo_documento, activo } = ctx.query;
 
-      const numberingService = strapi.service('api::factus.factus-numbering');
+      const numberingService = strapi.service('api::factus.numering');
       const ranges = await numberingService.listRanges({
         tipo_documento,
         activo: activo === 'true',
@@ -746,7 +734,7 @@ export default {
     try {
       const { id } = ctx.params;
 
-      const numberingService = strapi.service('api::factus.factus-numbering');
+      const numberingService = strapi.service('api::factus.numering');
       const stats = await numberingService.getRangeStats(parseInt(id));
 
       ctx.status = 200;
@@ -772,7 +760,7 @@ export default {
    */
   async getFactusRanges(ctx) {
     try {
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
 
       // Obtener configuración y token
       const config = await strapi.db.query('api::factus-config.factus-config').findOne({
@@ -833,7 +821,7 @@ export default {
         return ctx.badRequest('invoiceId es requerido');
       }
 
-      const mapperService = strapi.service('api::factus.factus-mapper');
+      const mapperService = strapi.service('api::factus.mapper');
       const validation = await mapperService.validateInvoice(invoiceId);
 
       ctx.status = 200;
@@ -861,7 +849,7 @@ export default {
    */
   async getTokenInfo(ctx) {
     try {
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const info = await authService.getTokenInfo();
 
       ctx.status = 200;
@@ -884,7 +872,7 @@ export default {
    */
   async syncNumberingRanges(ctx) {
     try {
-      const numberingService = strapi.service('api::factus.factus-numbering');
+      const numberingService = strapi.service('api::factus.numering');
       const result = await numberingService.syncWithFactus();
 
       ctx.status = 200;

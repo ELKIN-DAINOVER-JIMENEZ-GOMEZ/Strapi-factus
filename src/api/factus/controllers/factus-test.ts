@@ -23,7 +23,7 @@ export default {
    */
   async testConnection(ctx: Context) {
     try {
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const result = await authService.testConnection();
 
       if (result.success) {
@@ -66,7 +66,7 @@ export default {
    */
   async tokenInfo(ctx: Context) {
     try {
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const info = await authService.getTokenInfo();
 
       ctx.send({
@@ -100,7 +100,7 @@ export default {
    */
   async forceRefresh(ctx: Context) {
     try {
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const token = await authService.refreshToken();
 
       ctx.send({
@@ -138,7 +138,7 @@ export default {
    */
   async getNewToken(ctx: Context) {
     try {
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const token = await authService.getToken();
 
       ctx.send({
@@ -220,7 +220,7 @@ export default {
       // 3. Verificar conexión con Factus
       if (checks.checks.factus_config_exists) {
         try {
-          const authService = strapi.service('api::factus.factus-auth');
+          const authService = strapi.service('api::factus.auth');
           const result = await authService.testConnection();
           checks.checks.factus_api_connection = result.success;
           

@@ -68,7 +68,7 @@ export default {
   async emitInvoice(invoiceId: number): Promise<FactusOperationResult<FactusEmissionResponse>> {
     try {
       // 1. Validar factura
-      const mapperService = strapi.service('api::factus.factus-mapper');
+      const mapperService = strapi.service('api::factus.mapper');
       const validation = await mapperService.validateInvoice(invoiceId);
 
       if (!validation.valid) {
@@ -123,7 +123,7 @@ export default {
       const payload = await mapperService.mapInvoiceToFactus(invoiceId);
 
       // 4. Validar payload antes de enviar
-      const senderService = strapi.service('api::factus.factus-sender');
+      const senderService = strapi.service('api::factus.sender');
       const payloadValidation = senderService.validatePayload(payload);
 
       if (!payloadValidation.valid) {
@@ -136,7 +136,7 @@ export default {
       }
 
       // 5. Obtener token y enviar
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const token = await authService.getToken();
 
       const sendResult = await senderService.sendInvoice(payload, {
@@ -291,7 +291,7 @@ export default {
 
   async getInvoiceStatus(factusId: string): Promise<FactusOperationResult<any>> {
     try {
-      const senderService = strapi.service('api::factus.factus-sender');
+      const senderService = strapi.service('api::factus.sender');
       const result = await senderService.getDocumentStatus(factusId);
 
       if (!result.success) {
@@ -316,7 +316,7 @@ export default {
 
   async downloadPDF(factusId: string): Promise<FactusOperationResult<any>> {
     try {
-      const senderService = strapi.service('api::factus.factus-sender');
+      const senderService = strapi.service('api::factus.sender');
       const result = await senderService.downloadPDF(factusId);
 
       if (!result.success) {
@@ -350,7 +350,7 @@ export default {
     estado?: string;
   }): Promise<FactusOperationResult<any>> {
     try {
-      const senderService = strapi.service('api::factus.factus-sender');
+      const senderService = strapi.service('api::factus.sender');
       const result = await senderService.listDocuments(filters);
 
       if (!result.success) {

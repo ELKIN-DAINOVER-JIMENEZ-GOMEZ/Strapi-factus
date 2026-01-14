@@ -143,7 +143,7 @@ export default {
   },
 
   async getAuthConfig() {
-    const authService = strapi.service('api::factus.factus-auth');
+    const authService = strapi.service('api::factus.auth');
     const token = await authService.getToken();
     const config = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} }) as any;
     if (!config) throw new Error('Configuración de Factus no encontrada');

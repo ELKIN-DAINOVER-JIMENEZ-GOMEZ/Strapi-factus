@@ -54,7 +54,7 @@ export default {
       }
 
       // Llamar al servicio de emisión
-      const emissionService = strapi.service('api::factus.factus-emission');
+      const emissionService = strapi.service('api::factus.emission');
       const result = await emissionService.emitInvoice(invoiceId);
 
       // Retornar respuesta
@@ -103,7 +103,7 @@ export default {
         return;
       }
 
-      const emissionService = strapi.service('api::factus.factus-emission');
+      const emissionService = strapi.service('api::factus.emission');
       const result = await emissionService.getInvoiceStatus(documentId);
 
       if (result.success) {
@@ -139,7 +139,7 @@ export default {
         return;
       }
 
-      const emissionService = strapi.service('api::factus.factus-emission');
+      const emissionService = strapi.service('api::factus.emission');
       const result = await emissionService.downloadPDF(documentId);
 
       if (result.success) {
@@ -170,7 +170,7 @@ export default {
     try {
       const { desde, hasta, estado } = ctx.query;
 
-      const emissionService = strapi.service('api::factus.factus-emission');
+      const emissionService = strapi.service('api::factus.emission');
       const result = await emissionService.listInvoices({
         desde: desde as string,
         hasta: hasta as string,

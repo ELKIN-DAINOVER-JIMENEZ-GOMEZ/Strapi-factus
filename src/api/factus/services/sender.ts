@@ -176,15 +176,10 @@ export default {
     token: string;
     config: FactusConfig;
   }> {
-    const authService = strapi.service('api::factus.factus-auth');
+    const authService = strapi.service('api::factus.auth');
     const token = await authService.getToken();
 
-    const configResult = await strapi.entityService.findMany(
-      'api::factus-config.factus-config'
-    );
-    const config: FactusConfig = Array.isArray(configResult) 
-      ? configResult[0] 
-      : configResult;
+    const config = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} }) as FactusConfig;
 
     if (!config) {
       throw new Error('Configuración de Factus no encontrada');
@@ -367,7 +362,7 @@ export default {
         }
       }
 
-      const emissionService = strapi.service('api::factus.factus-emission');
+      const emissionService = strapi.service('api::factus.emission');
       const result = await emissionService.downloadPDF(factusDocumentId);
 
       if (!result.success) {
@@ -558,3 +553,4 @@ export default {
     return { valid: errors.length === 0, errors };
   },
 };
+

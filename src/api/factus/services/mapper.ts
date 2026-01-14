@@ -50,11 +50,11 @@ export default {
       let consecutivo: number;
       let prefijo: string;
 
-      const hasNumberingService = strapi.service('api::factus.factus-numbering');
+      const hasNumberingService = strapi.service('api::factus.numering');
 
       if (hasNumberingService) {
         try {
-          const numberingService = strapi.service('api::factus.factus-numbering');
+          const numberingService = strapi.service('api::factus.numering');
           const range = await numberingService.getActiveRange('factura');
           
           numberingRangeId = range.factus_id;

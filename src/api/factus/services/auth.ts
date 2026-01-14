@@ -11,15 +11,8 @@ export default {
 
   async getToken(): Promise<string> {
     try {
-      const result = await strapi.entityService.findMany(
-        'api::factus-config.factus-config',
-        { 
-          populate: '*',
-          publicationState: 'live'
-        }
-      );
-
-      const config: FactusConfig = Array.isArray(result) ? result[0] : result;
+      // Buscar config (usando db.query para evitar problemas de tipos)
+      const config: FactusConfig = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} });
 
       if (!config) {
         throw new Error(
@@ -28,12 +21,12 @@ export default {
         );
       }
 
-     
+      // Verificar si hay token válido en cache
       if (config.token_acceso && config.token_expiracion) {
         const now = new Date();
         const expiration = new Date(config.token_expiracion);
         
-        //  CAMBIO IMPORTANTE: Renovar si expira en menos de 10 minutos
+        // Renovar si expira en menos de 10 minutos
         const tenMinutesFromNow = new Date(now.getTime() + 10 * 60000);
 
         if (expiration > tenMinutesFromNow) {
@@ -118,12 +111,7 @@ export default {
   async refreshToken(): Promise<string> {
     try {
       // Buscar configuración
-      const result = await strapi.entityService.findMany(
-        'api::factus-config.factus-config',
-        { populate: '*' }
-      );
-
-      const config: FactusConfig = Array.isArray(result) ? result[0] : result;
+      const config: FactusConfig = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} });
 
       if (!config.refresh_token) {
         throw new Error('❌ No hay refresh_token disponible');

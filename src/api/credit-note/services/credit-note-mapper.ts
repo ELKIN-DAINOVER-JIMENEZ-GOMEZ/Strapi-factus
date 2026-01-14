@@ -132,11 +132,11 @@ export default {
       // PASO 3: Obtener rango de numeración para notas crédito
       let numberingRangeId: number | undefined;
 
-      const hasNumberingService = strapi.service('api::factus.factus-numbering');
+      const hasNumberingService = strapi.service('api::factus.numering');
 
       if (hasNumberingService) {
         try {
-          const numberingService = strapi.service('api::factus.factus-numbering');
+          const numberingService = strapi.service('api::factus.numering');
           const range = await numberingService.getActiveRange('nota_credito');
           numberingRangeId = range.factus_id;
         } catch (error) {

@@ -288,14 +288,11 @@ export default {
 
     try {
       // Obtener token
-      const authService = strapi.service('api::factus.factus-auth');
+      const authService = strapi.service('api::factus.auth');
       const token = await authService.getToken();
 
       // Obtener configuración
-      const configResult = await strapi.entityService.findMany(
-        'api::factus-config.factus-config'
-      );
-      const config = Array.isArray(configResult) ? configResult[0] : configResult;
+      const config = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} });
 
       // TODO: Implementar llamada a Factus para obtener rangos
       // const response = await axios.get(`${config.api_url}/api/v1/numbering-ranges`, {

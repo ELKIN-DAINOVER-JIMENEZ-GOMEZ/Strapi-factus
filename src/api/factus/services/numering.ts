@@ -1,20 +1,8 @@
-/**
- * Responsabilidades:
- * - Gestionar rangos de numeración DIAN
- * - Asignar consecutivos automáticamente
- * - Validar disponibilidad de números
- * - Sincronizar con Factus API
- */
 
 import type { NumberingRange } from '../types/factus.types';
 
 export default {
-  /**
-   * 🔢 Obtener rango activo por tipo de documento
-   * 
-   * @param tipoDocumento - Tipo de documento (factura, nota_credito, etc.)
-   * @returns Rango activo
-   */
+ 
   async getActiveRange(
     tipoDocumento: 'factura' | 'nota_credito' | 'nota_debito' | 'factura_exportacion' = 'factura'
   ): Promise<NumberingRange> {
@@ -34,7 +22,7 @@ export default {
 
       if (!ranges || ranges.length === 0) {
         throw new Error(
-          `❌ No hay rangos de numeración activos para ${tipoDocumento}. ` +
+          ` No hay rangos de numeración activos para ${tipoDocumento}. ` +
           'Ve a Content Manager → Numbering Range y crea uno.'
         );
       }
@@ -44,7 +32,7 @@ export default {
       // Validar que aún hay números disponibles
       if (range.consecutivo_actual >= range.hasta) {
         throw new Error(
-          `❌ Rango de numeración agotado. ` +
+          ` Rango de numeración agotado. ` +
           `${range.prefijo}: ${range.desde} - ${range.hasta}. ` +
           `Actual: ${range.consecutivo_actual}. Crea un nuevo rango.`
         );
@@ -56,12 +44,7 @@ export default {
     }
   },
 
-  /**
-   * 🎯 Obtener siguiente consecutivo disponible
-   * 
-   * @param rangeId - ID del rango en Strapi
-   * @returns Número consecutivo
-   */
+  
   async getNextConsecutive(rangeId: number): Promise<number> {
     try {
 
@@ -79,7 +62,7 @@ export default {
       // Validar que no exceda el límite
       if (nextConsecutive > range.hasta) {
         throw new Error(
-          `❌ Consecutivo ${nextConsecutive} excede el límite del rango (${range.hasta})`
+          `Consecutivo ${nextConsecutive} excede el límite del rango (${range.hasta})`
         );
       }
 
@@ -89,12 +72,7 @@ export default {
     }
   },
 
-  /**
-   * ⬆️ Incrementar consecutivo (después de emitir factura)
-   * 
-   * @param rangeId - ID del rango en Strapi
-   * @returns Nuevo consecutivo
-   */
+  
   async incrementConsecutive(rangeId: number): Promise<number> {
     try {
 
@@ -131,12 +109,7 @@ export default {
     }
   },
 
-  /**
-   * 📋 Listar todos los rangos
-   * 
-   * @param filters - Filtros opcionales
-   * @returns Lista de rangos
-   */
+  
   async listRanges(filters?: {
     tipo_documento?: string;
     activo?: boolean;
@@ -166,12 +139,7 @@ export default {
     }
   },
 
-  /**
-   * 📊 Obtener estadísticas de un rango
-   * 
-   * @param rangeId - ID del rango
-   * @returns Estadísticas
-   */
+ 
   async getRangeStats(rangeId: number): Promise<{
     range: NumberingRange;
     disponibles: number;
@@ -214,13 +182,6 @@ export default {
     }
   },
 
-  /**
-   * ✅ Validar número de factura
-   * 
-   * @param prefijo - Prefijo del número
-   * @param consecutivo - Consecutivo
-   * @returns Si es válido
-   */
   async validateInvoiceNumber(
     prefijo: string,
     consecutivo: number
@@ -272,12 +233,7 @@ export default {
     }
   },
 
-  /**
-   * 🔄 Sincronizar rangos con Factus API
-   * 
-   * Esta función consultaría los rangos desde Factus
-   * y los actualizaría en la base de datos local
-   */
+ 
   async syncWithFactus(): Promise<{
     success: boolean;
     synced: number;
@@ -294,10 +250,6 @@ export default {
       // Obtener configuración
       const config = await strapi.db.query('api::factus-config.factus-config').findOne({ where: {} });
 
-      // TODO: Implementar llamada a Factus para obtener rangos
-      // const response = await axios.get(`${config.api_url}/api/v1/numbering-ranges`, {
-      //   headers: { Authorization: `Bearer ${token}` }
-      // });
 
       return {
         success: true,
@@ -314,11 +266,7 @@ export default {
     }
   },
 
-  /**
-   * 🆕 Crear nuevo rango de numeración
-   * 
-   * Helper para crear rangos desde código
-   */
+ 
   async createRange(data: {
     factus_id: number;
     nombre: string;
@@ -350,11 +298,7 @@ export default {
     }
   },
 
-  /**
-   * 🔒 Desactivar rango
-   * 
-   * @param rangeId - ID del rango
-   */
+  
   async deactivateRange(rangeId: number): Promise<void> {
     try {
       await strapi.entityService.update(

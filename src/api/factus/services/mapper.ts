@@ -33,8 +33,28 @@ export default {
       }
 
       if (!invoice.invoice_items || invoice.invoice_items.length === 0) {
-        throw new Error(` La factura ${invoiceId} no tiene items`);
+        throw new Error(` Factura ${invoiceId} no tiene items`);
       }
+
+      // DEBUG: Ver cuántos items hay en la base de datos
+      console.log(`📦 Factura ${invoiceId} tiene ${invoice.invoice_items.length} items en BD:`);
+      invoice.invoice_items.forEach((item: any, idx: number) => {
+        console.log(`  ${idx + 1}. ID: ${item.id}, Producto: ${item.product?.nombre || 'N/A'}`);
+      });
+
+      // DEDUPLICAR: Remover items duplicados por ID
+      const uniqueItemsMap = new Map();
+      invoice.invoice_items.forEach((item: any) => {
+        if (!uniqueItemsMap.has(item.id)) {
+          uniqueItemsMap.set(item.id, item);
+        }
+      });
+      const uniqueItems = Array.from(uniqueItemsMap.values());
+      
+      console.log(`✅ Items únicos después de deduplicar: ${uniqueItems.length}`);
+
+      // Reemplazar invoice_items con los únicos
+      invoice.invoice_items = uniqueItems;
 
       // PASO 2: Obtener configuración
       const config = await strapi.db.query('api::factus-config.factus-config').findOne({

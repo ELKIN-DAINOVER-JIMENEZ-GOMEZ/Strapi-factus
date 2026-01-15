@@ -7,7 +7,7 @@ export default [
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          'connect-src': ["'self'", 'https:', 'http://localhost:4200'],
+          'connect-src': ["'self'", 'https:', 'http://localhost:4200', 'https://reto-factus.web.app'],
           'img-src': ["'self'", 'data:', 'blob:', 'https:'],
           'media-src': ["'self'", 'data:', 'blob:'],
           upgradeInsecureRequests: null,
@@ -19,7 +19,7 @@ export default [
     name: 'strapi::cors',
     config: {
       enabled: true,
-      origin: ['http://localhost:4200', 'http://localhost:1337'],
+      origin: ['http://localhost:4200', 'http://localhost:1337', 'https://reto-factus.web.app', 'https://reto-factus.firebaseapp.com'],
       headers: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
     },

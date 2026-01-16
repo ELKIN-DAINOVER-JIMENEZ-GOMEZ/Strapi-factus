@@ -14,13 +14,15 @@ export default factories.createCoreController('api::invoice.invoice', ({ strapi 
       const { page = 1, pageSize = 25, estado } = ctx.query;
 
       // Construir filtros
-      const filters: any = {};
+      const filters: any = {
+        // Filtrar solo documentos publicados (evita duplicados draft/published)
+        publishedAt: { $notNull: true }
+      };
       if (estado) {
-        filters.estado_local = { $eq: estado };
+        filters.estado_local = estado;
       }
 
       // Obtener facturas con relaciones usando db.query para mejor control
-      // Esto nos permite traer las relaciones sin importar el estado de publicación
       const invoices = await strapi.db.query('api::invoice.invoice').findMany({
         where: filters,
         populate: {
@@ -42,7 +44,7 @@ export default factories.createCoreController('api::invoice.invoice', ({ strapi 
         console.log(`  - Factura ID ${inv.id}: client_id en DB =`, inv.client?.id, '| nombre =', inv.client?.nombre_completo || 'SIN CLIENTE');
       });
 
-      // Obtener total para paginación
+      // Obtener total para paginación (también solo publicados)
       const total = await strapi.db.query('api::invoice.invoice').count({
         where: filters
       });

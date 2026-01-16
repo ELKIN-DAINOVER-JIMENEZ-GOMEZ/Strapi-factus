@@ -240,6 +240,7 @@ export interface FactusOperationResult<T = any> {
   message: string;
   data?: T;
   error?: string | FactusError[];
+  details?: string[];  // Detalles adicionales de errores de validación
   timestamp?: string;
   statusCode?: number;
 }

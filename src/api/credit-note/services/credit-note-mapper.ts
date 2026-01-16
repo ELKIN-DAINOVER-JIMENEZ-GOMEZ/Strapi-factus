@@ -150,23 +150,30 @@ export default {
       // IMPORTANTE: Este es el ID numérico que Factus devuelve, NO el número de factura
       let billId: number | null = null;
       
+      console.log('🔍 Buscando bill_id para factura:', creditNote.invoice.id);
+      console.log('   - factus_bill_id:', creditNote.invoice.factus_bill_id);
+      console.log('   - factus_id:', creditNote.invoice.factus_id);
+      
       // Prioridad 1: factus_bill_id (campo dedicado)
       if (creditNote.invoice.factus_bill_id) {
         billId = creditNote.invoice.factus_bill_id;
+        console.log('   ✅ bill_id obtenido de factus_bill_id:', billId);
       }
       // Prioridad 2: Buscar en respuesta_factus
       else if (creditNote.invoice.respuesta_factus) {
         const respuesta = creditNote.invoice.respuesta_factus;
+        console.log('   - Buscando en respuesta_factus...');
         billId = respuesta?.data?.bill?.id || 
                  respuesta?.bill?.id || 
                  respuesta?.data?.id ||
                  respuesta?.id;
         if (billId) {
-          // billId obtenido desde respuesta_factus
+          console.log('   ✅ bill_id obtenido de respuesta_factus:', billId);
         }
       }
       
       if (!billId) {
+        console.log('   ❌ No se encontró bill_id');
         throw new Error(`La factura referenciada no tiene ID numérico de Factus (factus_bill_id). Verifique que la factura fue emitida correctamente.`);
       }
 

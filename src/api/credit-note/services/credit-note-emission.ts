@@ -104,6 +104,10 @@ export default {
         };
       }
       // 5. Enviar a Factus
+      console.log('📤 Enviando nota crédito a Factus...');
+      console.log('   - bill_id:', payload.bill_id);
+      console.log('   - correction_concept_code:', payload.correction_concept_code);
+      console.log('   - customization_id:', payload.customization_id);
 
       const sendResult = await senderService.sendCreditNote(payload, {
         timeout: 30000,
@@ -111,7 +115,10 @@ export default {
         retryDelay: 2000,
       });
 
+      console.log('📥 Respuesta de Factus:', JSON.stringify(sendResult, null, 2));
+
       if (!sendResult.success) {
+        console.log('❌ Error de Factus:', sendResult.error);
         await this.updateCreditNoteStatus(
           creditNoteId,
           sendResult.data || {},

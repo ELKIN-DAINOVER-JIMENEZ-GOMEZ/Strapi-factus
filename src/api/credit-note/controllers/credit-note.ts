@@ -14,13 +14,15 @@ export default factories.createCoreController('api::credit-note.credit-note', ({
     try {
       const { page = 1, pageSize = 25, estado } = ctx.query;
 
+      // Construir filtros
       const filters: any = {};
       if (estado) {
-        filters.estado_local = { $eq: estado };
+        filters.estado_local = estado;
       }
 
-      const creditNotes = await strapi.entityService.findMany('api::credit-note.credit-note', {
-        filters,
+      // Usar db.query para mejor control sobre las relaciones (igual que en facturas)
+      const creditNotes = await strapi.db.query('api::credit-note.credit-note').findMany({
+        where: filters,
         populate: {
           client: true,
           invoice: true,
@@ -30,13 +32,19 @@ export default factories.createCoreController('api::credit-note.credit-note', ({
             }
           }
         },
-        sort: { createdAt: 'desc' },
-        start: (Number(page) - 1) * Number(pageSize),
+        orderBy: { createdAt: 'desc' },
+        offset: (Number(page) - 1) * Number(pageSize),
         limit: Number(pageSize),
       });
 
-      const total = await strapi.entityService.count('api::credit-note.credit-note', {
-        filters
+      // Debug: mostrar datos de clientes en consola
+      console.log('📋 Notas Crédito encontradas:', creditNotes.length);
+      creditNotes.forEach((nc: any) => {
+        console.log(`  - NC ID ${nc.id}: client_id =`, nc.client?.id, '| nombre =', nc.client?.nombre_completo || 'SIN CLIENTE');
+      });
+
+      const total = await strapi.db.query('api::credit-note.credit-note').count({
+        where: filters
       });
 
       ctx.body = {
@@ -51,6 +59,7 @@ export default factories.createCoreController('api::credit-note.credit-note', ({
         }
       };
     } catch (error) {
+      console.error('❌ Error listando notas crédito:', error);
       ctx.throw(500, 'Error al obtener notas crédito');
     }
   },
@@ -62,7 +71,9 @@ export default factories.createCoreController('api::credit-note.credit-note', ({
     try {
       const { id } = ctx.params;
 
-      const creditNote = await strapi.entityService.findOne('api::credit-note.credit-note', id, {
+      // Usar db.query para mejor control sobre las relaciones
+      const creditNote = await strapi.db.query('api::credit-note.credit-note').findOne({
+        where: { id: Number(id) },
         populate: {
           client: true,
           invoice: true,
@@ -182,10 +193,10 @@ export default factories.createCoreController('api::credit-note.credit-note', ({
 
       const total = subtotal + totalIva;
 
-      // Crear nota crédito
-      // Asociar cliente a la nota crédito
+      // Crear nota crédito usando db.query para mejor control de relaciones
+      console.log('📝 Creando nota crédito con cliente ID:', invoice.client.id, '| Factura ID:', invoice.id);
       
-      const creditNote = await strapi.entityService.create('api::credit-note.credit-note', {
+      const creditNote = await strapi.db.query('api::credit-note.credit-note').create({
         data: {
           numero_nota: numeroNota,
           prefijo,
@@ -200,10 +211,12 @@ export default factories.createCoreController('api::credit-note.credit-note', ({
           total,
           estado_local: 'Borrador',
           observaciones: body.observaciones || '',
-          client: invoice.client.id,  // Ahora garantizado que existe
+          client: invoice.client.id,
           invoice: invoice.id,
         }
       }) as any;
+      
+      console.log('✅ Nota crédito creada con ID:', creditNote.id);
 
       // Crear items de la nota crédito
       for (const itemData of itemsData) {
@@ -225,8 +238,9 @@ export default factories.createCoreController('api::credit-note.credit-note', ({
         });
       }
 
-      // Obtener nota crédito con relaciones
-      const createdCreditNote = await strapi.entityService.findOne('api::credit-note.credit-note', creditNote.id, {
+      // Obtener nota crédito con relaciones usando db.query
+      const createdCreditNote = await strapi.db.query('api::credit-note.credit-note').findOne({
+        where: { id: creditNote.id },
         populate: {
           client: true,
           invoice: true,
@@ -236,7 +250,7 @@ export default factories.createCoreController('api::credit-note.credit-note', ({
         }
       });
 
-      // Nota crédito creada exitosamente
+      console.log('📋 Nota crédito creada - Cliente:', createdCreditNote?.client?.nombre_completo || 'SIN CLIENTE');
 
       ctx.body = {
         success: true,

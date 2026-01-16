@@ -95,11 +95,14 @@ export default {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         if (attempt > 0) {
+          console.log(`🔄 Reintento ${attempt} de ${retries}...`);
           await this.sleep(retryDelay * attempt);
         }
 
         const { token, config } = await this.getAuthConfig();
         const url = `${config.api_url}/v1/bills/validate`;
+        
+        console.log(`📤 Enviando a Factus (intento ${attempt + 1}): ${url}`);
 
         const response: AxiosResponse<FactusApiResponse> = await axios.post(
           url,
@@ -116,6 +119,7 @@ export default {
         );
 
         if (response.status >= 200 && response.status < 300) {
+          console.log('✅ Factus respuesta exitosa:', JSON.stringify(response.data, null, 2));
           return {
             success: true,
             data: response.data,
@@ -125,6 +129,17 @@ export default {
 
         if (response.status >= 400 && response.status < 500) {
           const errorData = response.data;
+          console.log('❌ Factus error response (status ' + response.status + '):');
+          console.log('📋 Error completo:', JSON.stringify(errorData, null, 2));
+          
+          // Log adicional para diferentes formatos de error de Factus
+          if (errorData?.errors) {
+            console.log('🔴 Errores de validación:', JSON.stringify(errorData.errors, null, 2));
+          }
+          if (errorData?.message) {
+            console.log('🔴 Mensaje:', errorData.message);
+          }
+          
           const errorMessage = this.parseErrorMessage(errorData);
 
           return {
@@ -140,10 +155,14 @@ export default {
       } catch (error) {
         lastError = error;
         const axiosError = error as AxiosError<FactusApiResponse>;
+        
+        console.log(`❌ Error en intento ${attempt + 1}:`, axiosError.message);
 
         if (axiosError.response) {
           const status = axiosError.response.status;
           const errorData = axiosError.response.data;
+          
+          console.log(`📋 Status: ${status}, Data:`, JSON.stringify(errorData, null, 2));
 
           if (status >= 400 && status < 500) {
             return {
@@ -159,17 +178,40 @@ export default {
           }
 
         } else if (axiosError.request) {
+          console.log('🔴 No hubo respuesta del servidor (timeout o error de red)');
           if (attempt < retries) {
             continue;
           }
+        } else {
+          console.log('🔴 Error de configuración:', axiosError.message);
         }
       }
     }
 
     return {
       success: false,
-      error: `Error después de ${retries + 1} intentos: ${this.getErrorMessage(lastError)}`,
+      error: this.getFinalErrorMessage(lastError, retries),
+      statusCode: (lastError as AxiosError)?.response?.status,
     };
+  },
+
+  getFinalErrorMessage(error: any, retries: number): string {
+    const axiosError = error as AxiosError<FactusApiResponse>;
+    const status = axiosError?.response?.status;
+    
+    if (status === 503 || status === 502 || status === 504) {
+      return `El servicio de Factus no está disponible en este momento (Error ${status}). Por favor intente nuevamente en unos minutos.`;
+    }
+    
+    if (status === 401 || status === 403) {
+      return 'Error de autenticación con Factus. Verifique las credenciales en la configuración.';
+    }
+    
+    if (!axiosError?.response && axiosError?.request) {
+      return 'No se pudo conectar con Factus. Verifique su conexión a internet o intente más tarde.';
+    }
+    
+    return `Error después de ${retries + 1} intentos: ${this.getErrorMessage(error)}`;
   },
 
   async getAuthConfig(): Promise<{
@@ -491,6 +533,17 @@ export default {
 
   parseErrorMessage(data: any): string {
     if (!data) return 'Error desconocido';
+
+    // Formato común de Factus: { message: "...", errors: { campo: ["error1", "error2"] } }
+    if (data.errors && typeof data.errors === 'object' && !Array.isArray(data.errors)) {
+      const errorMessages = Object.entries(data.errors)
+        .map(([field, messages]) => {
+          const msgArray = Array.isArray(messages) ? messages : [messages];
+          return `${field}: ${msgArray.join(', ')}`;
+        })
+        .join('; ');
+      return data.message ? `${data.message} - ${errorMessages}` : errorMessages;
+    }
 
     if (data.error && typeof data.error === 'string') return data.error;
     if (data.error?.message) return data.error.message;

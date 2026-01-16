@@ -39,19 +39,25 @@ export default {
       // DEBUG: Ver cuántos items hay en la base de datos
       console.log(`📦 Factura ${invoiceId} tiene ${invoice.invoice_items.length} items en BD:`);
       invoice.invoice_items.forEach((item: any, idx: number) => {
-        console.log(`  ${idx + 1}. ID: ${item.id}, Producto: ${item.product?.nombre || 'N/A'}`);
+        console.log(`  ${idx + 1}. ID: ${item.id}, Product ID: ${item.product?.id}, Producto: ${item.product?.nombre || 'N/A'}`);
       });
 
-      // DEDUPLICAR: Remover items duplicados por ID
+      // DEDUPLICAR: Combinar items del mismo producto sumando cantidades
       const uniqueItemsMap = new Map();
       invoice.invoice_items.forEach((item: any) => {
-        if (!uniqueItemsMap.has(item.id)) {
-          uniqueItemsMap.set(item.id, item);
+        const productId = item.product?.id || item.id;
+        if (uniqueItemsMap.has(productId)) {
+          // Si ya existe, sumar la cantidad
+          const existing = uniqueItemsMap.get(productId);
+          existing.cantidad = (existing.cantidad || 1) + (item.cantidad || 1);
+        } else {
+          // Si no existe, agregar con cantidad inicial
+          uniqueItemsMap.set(productId, { ...item, cantidad: item.cantidad || 1 });
         }
       });
       const uniqueItems = Array.from(uniqueItemsMap.values());
       
-      console.log(`✅ Items únicos después de deduplicar: ${uniqueItems.length}`);
+      console.log(`✅ Items únicos después de deduplicar por producto: ${uniqueItems.length}`);
 
       // Reemplazar invoice_items con los únicos
       invoice.invoice_items = uniqueItems;
@@ -129,14 +135,15 @@ export default {
         const unitMeasureId = this.mapUnidadMedida(product.unidad_medida || 'UND');
         const isExcluded = product.aplica_iva ? 0 : 1;
 
+        // scheme_id: 1 = bienes, 0 = servicios (debe ser número, no string)
         const mappedItem: any = {
-          scheme_id: product.tipo === 'servicio' ? '0' : '1',
+          scheme_id: product.tipo === 'servicio' ? 0 : 1,
           note: product.tipo === 'servicio' ? 'Servicio' : '',
-          code_reference: product.codigo,
+          code_reference: product.codigo || `PROD-${product.id}`,
           name: product.nombre,
-          quantity: parseFloat(String(item.cantidad)),
+          quantity: parseFloat(String(item.cantidad)) || 1,
           discount_rate: parseFloat(String(item.descuento_porcentaje || 0)),
-          price: parseFloat(String(item.precio_unitario)),
+          price: parseFloat(String(item.precio_unitario)) || 0,
           tax_rate: parseFloat(String(item.iva_porcentaje || 0)).toFixed(2),
           unit_measure_id: unitMeasureId,
           standard_code_id: product.codigo_unspsc ? parseInt(product.codigo_unspsc) : 1,
@@ -145,12 +152,9 @@ export default {
           withholding_taxes: [],
         };
 
-        if (invoice.client) {
-          mappedItem.mandate = {
-            identification_document_id: this.mapTipoDocumento(invoice.client.tipo_documento),
-            identification: String(invoice.client.numero_documento),
-          };
-        }
+        // NOTA: El campo "mandate" solo se usa para facturas de mandato (operation_type específico)
+        // Para ventas normales NO debe incluirse, ya que causa error 400 en Factus
+        // Si en el futuro se necesitan facturas de mandato, agregar lógica condicional aquí
 
         return mappedItem;
       });
@@ -367,14 +371,15 @@ export default {
         errors.push(' La factura debe tener al menos un ítem');
       }
 
-      // Validar fecha no es futura
+      // Validar fecha - si es futura, solo advertir pero no bloquear
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const invoiceDate = new Date(invoice.fecha_emision);
       invoiceDate.setHours(0, 0, 0, 0);
 
       if (invoiceDate > today) {
-        errors.push(` La fecha de emisión (${this.formatDate(invoiceDate)}) es futura. Se ajustará a la fecha actual.`);
+        // Solo advertencia, no error - se ajustará automáticamente
+        console.log(`⚠️ Fecha futura detectada (${this.formatDate(invoiceDate)}), se usará fecha actual`);
       }
 
       return {

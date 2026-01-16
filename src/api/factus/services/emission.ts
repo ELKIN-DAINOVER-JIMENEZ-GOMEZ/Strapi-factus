@@ -66,19 +66,24 @@ interface FactusEmissionResponse {
 
 export default {
   async emitInvoice(invoiceId: number): Promise<FactusOperationResult<FactusEmissionResponse>> {
+    console.log('🚀 INICIANDO EMISIÓN para invoiceId:', invoiceId);
     try {
       // 1. Validar factura
       const mapperService = strapi.service('api::factus.mapper');
+      console.log('📝 Validando factura...');
       const validation = await mapperService.validateInvoice(invoiceId);
 
       if (!validation.valid) {
+        console.log('❌ Factura inválida:', validation.errors);
         return {
           success: false,
           message: ' Factura inválida',
           error: validation.errors.join(', '),
+          details: validation.errors,
           timestamp: new Date().toISOString(),
         };
       }
+      console.log('✅ Factura validada');
 
       // 2. Obtener factura con relaciones completas
       const invoice = await strapi.db.query('api::invoice.invoice').findOne({

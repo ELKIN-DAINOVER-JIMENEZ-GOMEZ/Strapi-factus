@@ -37,6 +37,7 @@ export default {
           success: false,
           message: result.message,
           error: result.error,
+          details: result.details || [],
         };
       }
     } catch (error) {

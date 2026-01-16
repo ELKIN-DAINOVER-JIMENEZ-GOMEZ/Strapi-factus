@@ -122,15 +122,20 @@ export default {
       // 3. Mapear factura al formato Factus
       const payload = await mapperService.mapInvoiceToFactus(invoiceId);
 
+      // DEBUG: Mostrar payload para diagnóstico
+      console.log('📋 Payload para Factus:', JSON.stringify(payload, null, 2));
+
       // 4. Validar payload antes de enviar
       const senderService = strapi.service('api::factus.sender');
       const payloadValidation = senderService.validatePayload(payload);
 
       if (!payloadValidation.valid) {
+        console.log('❌ Errores de validación:', payloadValidation.errors);
         return {
           success: false,
           message: '❌ Payload inválido',
           error: payloadValidation.errors.join(', '),
+          details: payloadValidation.errors,
           timestamp: new Date().toISOString(),
         };
       }
